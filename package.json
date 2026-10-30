@@ -1,0 +1,27 @@
+{
+  "name": "@morse/verifier",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Verifies Morse's AWS Nitro enclave in the browser and seals requests to it.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing/*": "./src/testing/*.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@noble/curves": "2.4.0",
+    "@noble/hashes": "2.4.0",
+    "@peculiar/asn1-schema": "2.10.0",
+    "@peculiar/asn1-x509": "2.10.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@peculiar/asn1-ecc": "2.10.0",
+    "vitest": "5.0.2"
+  }
+}
