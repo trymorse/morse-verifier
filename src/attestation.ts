@@ -21,21 +21,19 @@ export interface ProxyKeys {
 	readonly expiresAt: number;
 }
 
-/** Why one instance was refused: `unpinned`, a document that verified but names an image no pin
- * does, which newer pins may; `invalid`, any other failure, which no pins lift. */
-export interface Refusal {
-	readonly kind: "unpinned" | "invalid";
-	readonly reason: string;
-}
-
 export class UnattestedError extends Error {
 	override name = "UnattestedError";
-	constructor(readonly refusals: readonly Refusal[]) {
+	/** Whether an instance's document verified but names an image no pin does, which pins of a later
+	 * release may. No pins lift any other refusal. */
+	readonly unpinned: boolean;
+	/** `refusals` is why each instance was refused, in the proxy's order. */
+	constructor(readonly refusals: readonly Error[]) {
 		super(
 			refusals.length === 0
 				? "the proxy lists no attested instance"
-				: `no proxy instance is attested: ${refusals.map((r) => r.reason).join("; ")}`,
+				: `no proxy instance is attested: ${refusals.map((r) => r.message).join("; ")}`,
 		);
+		this.unpinned = refusals.some((r) => r instanceof UnpinnedError);
 	}
 }
 
@@ -102,14 +100,13 @@ export async function verifyInstances(
 	const results = await Promise.allSettled(
 		instances.map(async (i) => (await proveInstance(i, trust, now)).key),
 	);
-	const refusals: Refusal[] = [];
+	const refusals: Error[] = [];
 	const byId = new Map<string, AttestedKey>();
 	for (const r of results) {
 		if (r.status === "rejected") {
-			refusals.push({
-				kind: r.reason instanceof UnpinnedError ? "unpinned" : "invalid",
-				reason: r.reason instanceof Error ? r.reason.message : String(r.reason),
-			});
+			refusals.push(
+				r.reason instanceof Error ? r.reason : new Error(String(r.reason)),
+			);
 			continue;
 		}
 		const id = r.value.keyId.join(",");

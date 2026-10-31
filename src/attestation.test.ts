@@ -70,15 +70,13 @@ describe("verifyInstances", () => {
 			now,
 		).catch((e: unknown) => e);
 		expect(refused).toBeInstanceOf(UnattestedError);
-		expect((refused as UnattestedError).refusals).toEqual([
-			{
-				kind: "invalid",
-				reason: expect.stringMatching(
-					/stand-in document, which this build refuses/,
-				),
-			},
-			{ kind: "invalid", reason: expect.stringMatching(/CBOR ends early/) },
-		]);
+		expect((refused as UnattestedError).refusals.map((r) => r.message)).toEqual(
+			[
+				expect.stringMatching(/stand-in document, which this build refuses/),
+				expect.stringMatching(/CBOR ends early/),
+			],
+		);
+		expect((refused as UnattestedError).unpinned).toBe(false);
 		await expect(verifyInstances([], dev, now)).rejects.toThrow(
 			/lists no attested instance/,
 		);
@@ -95,7 +93,7 @@ describe("verifyInstances", () => {
 		expect(keys.map((k) => hex(k.publicKey))).toEqual([hex(publicKey)]);
 	});
 
-	it("calls a document that verifies but names an image no pin does unpinned, and a revoked or forged one invalid", async () => {
+	it("calls a document that verifies but names an image no pin does unpinned, and a revoked or forged one not", async () => {
 		const forge = await forgeNitro();
 		const document = async (o: Partial<DocumentOptions> = {}) =>
 			toBase64(
@@ -106,18 +104,19 @@ describe("verifyInstances", () => {
 				}),
 			);
 		const trust = { ...dev, standIns: false, root: forge.root };
-		const refusalsOf = (instances: string[], pins = [pinOf()]) =>
-			verifyInstances(instances, { ...trust, pins }, now).catch(
-				(e: UnattestedError) => e.refusals.map((r) => r.kind),
+		const unpinned = (instances: string[], pins = [pinOf()]) =>
+			verifyInstances(instances, { ...trust, pins }, now).then(
+				() => "attested",
+				(e: UnattestedError) => e.unpinned,
 			);
 		expect(
-			await refusalsOf([await document()], [pinOf({ pcr0: "b0".repeat(48) })]),
-		).toEqual(["unpinned"]);
-		expect(
-			await refusalsOf([await document()], [pinOf({ revoked: true })]),
-		).toEqual(["invalid"]);
-		expect(
-			await refusalsOf([await document({ signWith: "stranger" })], []),
-		).toEqual(["invalid"]);
+			await unpinned([await document()], [pinOf({ pcr0: "b0".repeat(48) })]),
+		).toBe(true);
+		expect(await unpinned([await document()], [pinOf({ revoked: true })])).toBe(
+			false,
+		);
+		expect(await unpinned([await document({ signWith: "stranger" })], [])).toBe(
+			false,
+		);
 	});
 });

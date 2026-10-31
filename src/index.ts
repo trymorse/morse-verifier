@@ -2,7 +2,6 @@ export {
 	type ProxyKeys,
 	type ProxyTrustAnchors,
 	proveInstance,
-	type Refusal,
 	UnattestedError,
 	verifyInstances,
 } from "./attestation.ts";
@@ -19,11 +18,11 @@ export {
 } from "./nitro.ts";
 export { AWS_NITRO_ROOT_PEM, NITRO_ROOT } from "./nitro_root.ts";
 export {
+	checkPcrs,
 	type Pcrs,
 	type PinnedImage,
 	parseEnclavePins,
 	pinNamed,
-	refusePcrs,
 	UnpinnedError,
 } from "./pins.ts";
 export {

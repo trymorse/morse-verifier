@@ -1,6 +1,6 @@
 import { type Bytes, enc, equalBytes, hex } from "./bytes.ts";
 import { type Cbor, decodeCbor, encodeCborArray } from "./cbor.ts";
-import { type Pcrs, type PinnedImage, pinNamed, refusePcrs } from "./pins.ts";
+import { checkPcrs, type Pcrs, type PinnedImage } from "./pins.ts";
 import { keyIdOf } from "./seal.ts";
 import { type Cert, importKey, P384, parseCert, verifyChain } from "./x509.ts";
 
@@ -130,10 +130,7 @@ export async function verifyNitroDocument(
 	const pcrs = field(payload, "pcrs");
 	const pcr = (n: number) => hex(bytesAt(pcrs ?? null, n));
 	const pcrsOf = { pcr0: pcr(0), pcr1: pcr(1), pcr2: pcr(2) };
-	const refused = refusePcrs(expect.pins, expect.environment, pcrsOf);
-	if (refused) throw refused;
-	const pin = pinNamed(expect.pins, expect.environment, pcrsOf);
-	if (!pin) throw new Error("no pin names the document's PCRs");
+	const pin = checkPcrs(expect.pins, expect.environment, pcrsOf);
 	report?.({ step: "build", pin, pcrs: pcrsOf });
 
 	const publicKey = keyInUserData(

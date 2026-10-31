@@ -55,25 +55,27 @@ export class UnpinnedError extends Error {
 	override name = "UnpinnedError";
 }
 
-export function refusePcrs(
+/** The pin of `environment` that names these PCRs. Throws for a debug enclave's all-zero PCRs, a
+ * revoked image, or, as UnpinnedError, an image no pin names. */
+export function checkPcrs(
 	pins: readonly PinnedImage[],
 	environment: string,
 	pcrs: Pcrs,
-): Error | undefined {
+): PinnedImage {
 	if (
 		pcrs.pcr0 === ZERO_PCR &&
 		pcrs.pcr1 === ZERO_PCR &&
 		pcrs.pcr2 === ZERO_PCR
 	)
-		return new Error(
+		throw new Error(
 			"the enclave reports all-zero PCRs, so it runs in debug mode",
 		);
 	const pinned = pinNamed(pins, environment, pcrs);
 	if (!pinned)
-		return new UnpinnedError(
+		throw new UnpinnedError(
 			`no ${environment} pin names PCR0 ${pcrs.pcr0.slice(0, 16)}`,
 		);
 	if (pinned.revoked)
-		return new Error(`the ${environment} image ${pinned.version} is revoked`);
-	return undefined;
+		throw new Error(`the ${environment} image ${pinned.version} is revoked`);
+	return pinned;
 }
