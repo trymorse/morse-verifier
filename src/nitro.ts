@@ -131,7 +131,7 @@ export async function verifyNitroDocument(
 	const pcr = (n: number) => hex(bytesAt(pcrs ?? null, n));
 	const pcrsOf = { pcr0: pcr(0), pcr1: pcr(1), pcr2: pcr(2) };
 	const refused = refusePcrs(expect.pins, expect.environment, pcrsOf);
-	if (refused) throw new Error(refused);
+	if (refused) throw refused;
 	const pin = pinNamed(expect.pins, expect.environment, pcrsOf);
 	if (!pin) throw new Error("no pin names the document's PCRs");
 	report?.({ step: "build", pin, pcrs: pcrsOf });

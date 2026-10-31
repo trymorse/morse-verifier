@@ -9,6 +9,7 @@ import {
 	type NitroStep,
 	verifyNitroDocument,
 } from "./nitro.ts";
+import { UnpinnedError } from "./pins.ts";
 import { keyIdOf, MAX_KEYS } from "./seal.ts";
 
 export interface ProxyTrustAnchors extends Omit<Expectation, "now"> {
@@ -20,13 +21,20 @@ export interface ProxyKeys {
 	readonly expiresAt: number;
 }
 
+/** Why one instance was refused: `unpinned`, a document that verified but names an image no pin
+ * does, which newer pins may; `invalid`, any other failure, which no pins lift. */
+export interface Refusal {
+	readonly kind: "unpinned" | "invalid";
+	readonly reason: string;
+}
+
 export class UnattestedError extends Error {
 	override name = "UnattestedError";
-	constructor(readonly reasons: readonly string[]) {
+	constructor(readonly refusals: readonly Refusal[]) {
 		super(
-			reasons.length === 0
+			refusals.length === 0
 				? "the proxy lists no attested instance"
-				: `no proxy instance is attested: ${reasons.join("; ")}`,
+				: `no proxy instance is attested: ${refusals.map((r) => r.reason).join("; ")}`,
 		);
 	}
 }
@@ -94,13 +102,14 @@ export async function verifyInstances(
 	const results = await Promise.allSettled(
 		instances.map(async (i) => (await proveInstance(i, trust, now)).key),
 	);
-	const reasons: string[] = [];
+	const refusals: Refusal[] = [];
 	const byId = new Map<string, AttestedKey>();
 	for (const r of results) {
 		if (r.status === "rejected") {
-			reasons.push(
-				r.reason instanceof Error ? r.reason.message : String(r.reason),
-			);
+			refusals.push({
+				kind: r.reason instanceof UnpinnedError ? "unpinned" : "invalid",
+				reason: r.reason instanceof Error ? r.reason.message : String(r.reason),
+			});
 			continue;
 		}
 		const id = r.value.keyId.join(",");
@@ -110,7 +119,7 @@ export async function verifyInstances(
 	const keys = [...byId.values()]
 		.sort((a, b) => b.issuedAt - a.issuedAt)
 		.slice(0, MAX_KEYS);
-	if (keys.length === 0) throw new UnattestedError(reasons);
+	if (keys.length === 0) throw new UnattestedError(refusals);
 	return {
 		keys,
 		expiresAt: Math.min(...keys.map((k) => k.issuedAt)) + MAX_AGE_MS,

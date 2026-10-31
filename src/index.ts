@@ -2,6 +2,7 @@ export {
 	type ProxyKeys,
 	type ProxyTrustAnchors,
 	proveInstance,
+	type Refusal,
 	UnattestedError,
 	verifyInstances,
 } from "./attestation.ts";
@@ -23,6 +24,7 @@ export {
 	parseEnclavePins,
 	pinNamed,
 	refusePcrs,
+	UnpinnedError,
 } from "./pins.ts";
 export {
 	HeadTooLarge,

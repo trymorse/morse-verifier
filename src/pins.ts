@@ -49,21 +49,31 @@ export const pinNamed = (
 			p.pcr2 === pcrs.pcr2,
 	);
 
+/** Refuses an image no pin names: one built after these pins were read, which newer pins may
+ * name, or one never pinned. */
+export class UnpinnedError extends Error {
+	override name = "UnpinnedError";
+}
+
 export function refusePcrs(
 	pins: readonly PinnedImage[],
 	environment: string,
 	pcrs: Pcrs,
-): string | undefined {
+): Error | undefined {
 	if (
 		pcrs.pcr0 === ZERO_PCR &&
 		pcrs.pcr1 === ZERO_PCR &&
 		pcrs.pcr2 === ZERO_PCR
 	)
-		return "the enclave reports all-zero PCRs, so it runs in debug mode";
+		return new Error(
+			"the enclave reports all-zero PCRs, so it runs in debug mode",
+		);
 	const pinned = pinNamed(pins, environment, pcrs);
 	if (!pinned)
-		return `no ${environment} pin names PCR0 ${pcrs.pcr0.slice(0, 16)}`;
+		return new UnpinnedError(
+			`no ${environment} pin names PCR0 ${pcrs.pcr0.slice(0, 16)}`,
+		);
 	if (pinned.revoked)
-		return `the ${environment} image ${pinned.version} is revoked`;
+		return new Error(`the ${environment} image ${pinned.version} is revoked`);
 	return undefined;
 }

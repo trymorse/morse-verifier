@@ -7,7 +7,12 @@ import {
 } from "./attestation.ts";
 import { type Bytes, hex, toBase64 } from "./bytes.ts";
 import { NITRO_ROOT } from "./nitro_root.ts";
-import { forgeNitro, pinOf, standIn } from "./testing/forge.ts";
+import {
+	type DocumentOptions,
+	forgeNitro,
+	pinOf,
+	standIn,
+} from "./testing/forge.ts";
 
 const MINUTE = 60_000;
 const newKey = () =>
@@ -65,9 +70,14 @@ describe("verifyInstances", () => {
 			now,
 		).catch((e: unknown) => e);
 		expect(refused).toBeInstanceOf(UnattestedError);
-		expect((refused as UnattestedError).reasons).toEqual([
-			expect.stringMatching(/stand-in document, which this build refuses/),
-			expect.stringMatching(/CBOR ends early/),
+		expect((refused as UnattestedError).refusals).toEqual([
+			{
+				kind: "invalid",
+				reason: expect.stringMatching(
+					/stand-in document, which this build refuses/,
+				),
+			},
+			{ kind: "invalid", reason: expect.stringMatching(/CBOR ends early/) },
 		]);
 		await expect(verifyInstances([], dev, now)).rejects.toThrow(
 			/lists no attested instance/,
@@ -83,5 +93,31 @@ describe("verifyInstances", () => {
 			now,
 		);
 		expect(keys.map((k) => hex(k.publicKey))).toEqual([hex(publicKey)]);
+	});
+
+	it("calls a document that verifies but names an image no pin does unpinned, and a revoked or forged one invalid", async () => {
+		const forge = await forgeNitro();
+		const document = async (o: Partial<DocumentOptions> = {}) =>
+			toBase64(
+				await forge.document({
+					timestamp: now - MINUTE,
+					publicKey: newKey(),
+					...o,
+				}),
+			);
+		const trust = { ...dev, standIns: false, root: forge.root };
+		const refusalsOf = (instances: string[], pins = [pinOf()]) =>
+			verifyInstances(instances, { ...trust, pins }, now).catch(
+				(e: UnattestedError) => e.refusals.map((r) => r.kind),
+			);
+		expect(
+			await refusalsOf([await document()], [pinOf({ pcr0: "b0".repeat(48) })]),
+		).toEqual(["unpinned"]);
+		expect(
+			await refusalsOf([await document()], [pinOf({ revoked: true })]),
+		).toEqual(["invalid"]);
+		expect(
+			await refusalsOf([await document({ signWith: "stranger" })], []),
+		).toEqual(["invalid"]);
 	});
 });
