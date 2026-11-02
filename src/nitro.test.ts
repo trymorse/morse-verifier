@@ -22,6 +22,16 @@ it("refuses a pins file with an all-zero entry", () => {
 	).toThrow(/all-zero/);
 });
 
+it("reads the public morse-pins entries, which name the image by its morse-enclave tag", () => {
+	const {
+		commit: _,
+		version: __,
+		...measured
+	} = pinOf({ environment: "prod" });
+	const [pin] = parseEnclavePins([{ tag: "v2026.11.0", ...measured }]);
+	expect(pin).toEqual({ version: "v2026.11.0", ...measured });
+});
+
 // NSM encodes this document's payload as an indefinite-length map.
 describe("a real AWS Nitro document", () => {
 	const document = fromBase64(

@@ -3,17 +3,37 @@ import { z } from "zod";
 const pcr = z.string().regex(/^[0-9a-f]{96}$/);
 const ZERO_PCR = "0".repeat(96);
 
-const image = z.strictObject({
-	commit: z.string().min(1),
-	version: z.string().min(1),
+const measured = {
 	environment: z.string().min(1),
 	pcr0: pcr,
 	pcr1: pcr,
 	pcr2: pcr,
 	built_at: z.iso.datetime(),
 	revoked: z.boolean(),
-});
-export type PinnedImage = z.infer<typeof image>;
+};
+
+/** An entry of Morse's private pins names the backend commit and describe it was built from. An
+ * entry of the public morse-pins names only the morse-enclave tag of its source. */
+const image = z.union([
+	z.strictObject({
+		commit: z.string().min(1),
+		version: z.string().min(1),
+		...measured,
+	}),
+	z
+		.strictObject({ tag: z.string().min(1), ...measured })
+		.transform(({ tag, ...rest }) => ({ version: tag, ...rest })),
+]);
+export type PinnedImage = {
+	readonly commit?: string;
+	readonly version: string;
+	readonly environment: string;
+	readonly pcr0: string;
+	readonly pcr1: string;
+	readonly pcr2: string;
+	readonly built_at: string;
+	readonly revoked: boolean;
+};
 
 const pinsSchema = z
 	.array(image)
@@ -26,6 +46,7 @@ const pinsSchema = z
 		"an entry pins all-zero PCRs, which only a debug enclave reports",
 	);
 
+/** Parses the app's own pins or the public morse-pins `enclave_pins.json`. */
 export const parseEnclavePins = (input: unknown): readonly PinnedImage[] =>
 	pinsSchema.parse(input);
 
