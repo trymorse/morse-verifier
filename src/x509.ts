@@ -5,6 +5,7 @@ import {
 	AsnPropTypes,
 } from "@peculiar/asn1-schema";
 import {
+	AlgorithmIdentifier,
 	BasicConstraints,
 	Certificate,
 	id_ce_basicConstraints,
@@ -18,6 +19,10 @@ import { type Bytes, concat, equalBytes, fromBase64, hex } from "./bytes.ts";
 export const EC_KEY = "1.2.840.10045.2.1";
 export const P384 = "1.3.132.0.34";
 const RSA_KEY = "1.2.840.113549.1.1.1";
+const RSA_PSS = "1.2.840.113549.1.1.10";
+const MGF1 = "1.2.840.113549.1.1.8";
+const SHA384 = "2.16.840.1.101.3.4.2.2";
+const PSS_SALT = 48;
 
 /** The named curves a key may use, by OID, each with its parameters' DER. */
 const CURVES: Record<string, { name: string; size: number; der: string }> = {
@@ -44,10 +49,28 @@ for (const field of ["r", "s"])
 		converter: AsnIntegerArrayBufferConverter,
 	})(EcdsaSignature.prototype, field);
 
-const SIGNATURES: Record<string, { key: string; hash: string }> = {
+/** RSASSA-PSS-params (RFC 4055), declared like EcdsaSignature. A field left out takes its
+ * default (SHA-1, MGF1 with SHA-1, a 20-byte salt, trailer 1), which only the trailer may. */
+class PssParams {
+	hashAlgorithm?: AlgorithmIdentifier;
+	maskGenAlgorithm?: AlgorithmIdentifier;
+	saltLength?: number;
+	trailerField?: number;
+}
+for (const [context, field, type] of [
+	[0, "hashAlgorithm", AlgorithmIdentifier],
+	[1, "maskGenAlgorithm", AlgorithmIdentifier],
+	[2, "saltLength", AsnPropTypes.Integer],
+	[3, "trailerField", AsnPropTypes.Integer],
+] as const)
+	AsnProp({ type, context, optional: true })(PssParams.prototype, field);
+
+/** RSASSA-PSS takes its hash from its parameters, which sha384Pss holds to SHA-384. */
+const SIGNATURES: Record<string, { key: string; hash: string; pss?: true }> = {
 	"1.2.840.113549.1.1.11": { key: RSA_KEY, hash: "SHA-256" },
 	"1.2.840.113549.1.1.12": { key: RSA_KEY, hash: "SHA-384" },
 	"1.2.840.113549.1.1.13": { key: RSA_KEY, hash: "SHA-512" },
+	[RSA_PSS]: { key: RSA_KEY, hash: "SHA-384", pss: true },
 	"1.2.840.10045.4.3.2": { key: EC_KEY, hash: "SHA-256" },
 	"1.2.840.10045.4.3.3": { key: EC_KEY, hash: "SHA-384" },
 	"1.2.840.10045.4.3.4": { key: EC_KEY, hash: "SHA-512" },
@@ -70,6 +93,7 @@ export interface Cert {
 	readonly issuer: Bytes;
 	readonly subject: Bytes;
 	readonly signatureAlgorithm: string;
+	readonly signatureParameters: Bytes | undefined;
 	readonly signature: Bytes;
 	readonly keyAlgorithm: string;
 	readonly curve: string | undefined;
@@ -100,6 +124,10 @@ export function parseCert(raw: Bytes): Cert {
 	if (!equalBytes(der(c), raw))
 		throw new Error("the certificate is not distinguished-encoded");
 	const t = c.tbsCertificate;
+	// The outer algorithm is outside the signature, so it must be the signed one, as RFC 5280 says.
+	if (!equalBytes(der(c.signatureAlgorithm), der(t.signature)))
+		throw new Error("the certificate's two signature algorithms differ");
+	const parameters = c.signatureAlgorithm.parameters;
 	const extensions = t.extensions ?? [];
 	const extension = (id: string) =>
 		extensions.find((e) => e.extnID === id)?.extnValue.buffer;
@@ -116,6 +144,7 @@ export function parseCert(raw: Bytes): Cert {
 		issuer: der(t.issuer),
 		subject: der(t.subject),
 		signatureAlgorithm: c.signatureAlgorithm.algorithm,
+		signatureParameters: parameters ? bytes(parameters) : undefined,
 		signature: bytes(c.signatureValue),
 		keyAlgorithm: t.subjectPublicKeyInfo.algorithm.algorithm,
 		curve:
@@ -148,12 +177,16 @@ function scalar(b: Bytes, size: number): Bytes | undefined {
 	return out;
 }
 
-export async function importKey(cert: Cert, hash: string): Promise<CryptoKey> {
+export async function importKey(
+	cert: Cert,
+	hash: string,
+	rsa: "RSASSA-PKCS1-v1_5" | "RSA-PSS" = "RSASSA-PKCS1-v1_5",
+): Promise<CryptoKey> {
 	if (cert.keyAlgorithm === RSA_KEY)
 		return crypto.subtle.importKey(
 			"spki",
 			cert.spki,
-			{ name: "RSASSA-PKCS1-v1_5", hash },
+			{ name: rsa, hash },
 			false,
 			["verify"],
 		);
@@ -189,10 +222,49 @@ function strictSignature(der: Bytes): { r: Bytes; s: Bytes } | undefined {
 	return minimalUnsigned(r) && minimalUnsigned(s) ? { r, s } : undefined;
 }
 
+/** SHA-384 with its parameters absent or NULL, which RFC 4055 has mean the same. */
+const isSha384 = (a: AlgorithmIdentifier | undefined) =>
+	a?.algorithm === SHA384 &&
+	(!a.parameters || hex(bytes(a.parameters)) === "0500");
+
+/** Whether RSASSA-PSS parameters name SHA-384, MGF1 with SHA-384, a 48-byte salt, and trailer
+ * 1, the only set verified (AMD signs its SEV certificates with it). WebCrypto takes the salt
+ * length alone and uses the key's hash for MGF1 and the trailer 0xBC, so a set it can't express
+ * is refused here rather than verified as something else. The parameters must re-encode to
+ * their own bytes; AMD's ARK and ASK write the default trailer out, and that re-encodes too. */
+function sha384Pss(parameters: Bytes | undefined): boolean {
+	if (!parameters) return false;
+	try {
+		const p = AsnConvert.parse(parameters, PssParams);
+		const mgf = p.maskGenAlgorithm;
+		return (
+			equalBytes(der(p), parameters) &&
+			isSha384(p.hashAlgorithm) &&
+			mgf?.algorithm === MGF1 &&
+			!!mgf.parameters &&
+			isSha384(AsnConvert.parse(mgf.parameters, AlgorithmIdentifier)) &&
+			p.saltLength === PSS_SALT &&
+			(p.trailerField ?? 1) === 1
+		);
+	} catch {
+		return false;
+	}
+}
+
 async function signedBy(child: Cert, parent: Cert): Promise<boolean> {
 	if (!equalBytes(child.issuer, parent.subject)) return false;
 	const alg = SIGNATURES[child.signatureAlgorithm];
 	if (!alg || alg.key !== parent.keyAlgorithm) return false;
+	if (alg.pss)
+		return (
+			sha384Pss(child.signatureParameters) &&
+			crypto.subtle.verify(
+				{ name: "RSA-PSS", saltLength: PSS_SALT },
+				await importKey(parent, alg.hash, "RSA-PSS"),
+				child.signature,
+				child.tbs,
+			)
+		);
 	const key = await importKey(parent, alg.hash);
 	if (alg.key === RSA_KEY)
 		return crypto.subtle.verify(

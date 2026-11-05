@@ -79,13 +79,14 @@ const aes = (key: Uint8Array, usage: KeyUsage) =>
 		usage,
 	]);
 
-/** RFC 9180's base-mode key schedule for DHKEM(X25519). */
+/** RFC 9180's base-mode key schedule for DHKEM(X25519): the AEAD key, its base nonce, and the
+ * secret the context exports from. */
 export function hpkeKeys(
 	dh: Uint8Array,
 	encapsulated: Bytes,
 	recipient: Bytes,
 	info: Bytes,
-): { key: Uint8Array; nonce: Uint8Array } {
+): { key: Uint8Array; nonce: Uint8Array; exporterSecret: Uint8Array } {
 	const empty = new Uint8Array();
 	const eaePrk = labeledExtract(
 		KEM_SUITE,
@@ -114,7 +115,25 @@ export function hpkeKeys(
 	return {
 		key: labeledExpand(HPKE_SUITE, secret, "key", context, 32),
 		nonce: labeledExpand(HPKE_SUITE, secret, "base_nonce", context, 12),
+		exporterSecret: labeledExpand(HPKE_SUITE, secret, "exp", context, 32),
 	};
+}
+
+/** RFC 9180's Export (5.3): `length` bytes for `exporterContext` from a context's secret. */
+export const hpkeExport = (
+	exporterSecret: Uint8Array,
+	exporterContext: Bytes,
+	length: number,
+): Uint8Array =>
+	labeledExpand(HPKE_SUITE, exporterSecret, "sec", exporterContext, length);
+
+/** The nonce of a context's `seq`th message (RFC 9180 5.2): the base nonce XOR `seq` as a
+ * big-endian integer. `seq` is a safe integer, so only the last eight bytes can change. */
+export function hpkeNonce(base: Uint8Array, seq: number): Bytes {
+	const nonce = new Uint8Array(base);
+	const view = new DataView(nonce.buffer);
+	view.setBigUint64(4, view.getBigUint64(4) ^ BigInt(seq));
+	return nonce;
 }
 
 /** RFC 9180 base-mode single-shot seal, as Go's crypto/hpke Sender.Seal makes it. */

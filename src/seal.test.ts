@@ -1,10 +1,14 @@
 import { readFileSync } from "node:fs";
+import { x25519 } from "@noble/curves/ed25519.js";
 import { describe, expect, it } from "vitest";
 import { type Bytes, concat, hex, unhex } from "./bytes.ts";
 import {
 	frameKeys,
 	frameNonce,
 	headJson,
+	hpkeExport,
+	hpkeKeys,
+	hpkeNonce,
 	innerPlaintext,
 	keyIdOf,
 	openReply,
@@ -154,5 +158,82 @@ describe.each(vectors.replies)("the reply vector $name", (v) => {
 		await expect(
 			openReply(streamOf(unhex(v.reply)), new Uint8Array(other)),
 		).rejects.toBeInstanceOf(SealedReplyError);
+	});
+});
+
+// RFC 9180's test vector for base mode with DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, and
+// AES-256-GCM, from the CFRG's test-vectors.json (cfrg/draft-irtf-cfrg-hpke at b1f7cb0). It keeps
+// the encryptions RFC 9180's appendix prints for each suite, numbered by `seq`: 0, 1, 2, 4, 255,
+// and 256.
+const hpke = JSON.parse(
+	readFileSync(new URL("./testdata/hpke_vector.json", import.meta.url), "utf8"),
+) as {
+	info: string;
+	skRm: string;
+	skEm: string;
+	pkRm: string;
+	enc: string;
+	shared_secret: string;
+	key: string;
+	base_nonce: string;
+	exporter_secret: string;
+	encryptions: {
+		seq: number;
+		aad: string;
+		ct: string;
+		nonce: string;
+		pt: string;
+	}[];
+	exports: { exporter_context: string; L: number; exported_value: string }[];
+};
+
+describe("RFC 9180's base-mode vector for X25519, HKDF-SHA256, and AES-256-GCM", () => {
+	const sender = x25519.getSharedSecret(unhex(hpke.skEm), unhex(hpke.pkRm));
+	const keys = hpkeKeys(
+		sender,
+		unhex(hpke.enc),
+		unhex(hpke.pkRm),
+		unhex(hpke.info),
+	);
+
+	it("encapsulates to the ephemeral key, which the recipient's key decapsulates to the same DH", () => {
+		expect(hex(x25519.getPublicKey(unhex(hpke.skEm)))).toBe(hpke.enc);
+		expect(x25519.getSharedSecret(unhex(hpke.skRm), unhex(hpke.enc))).toEqual(
+			sender,
+		);
+	});
+
+	it("derives the key, the base nonce, and the exporter secret", () => {
+		expect(hex(keys.key)).toBe(hpke.key);
+		expect(hex(keys.nonce)).toBe(hpke.base_nonce);
+		expect(hex(keys.exporterSecret)).toBe(hpke.exporter_secret);
+	});
+
+	it.each(
+		hpke.encryptions,
+	)("seals message $seq under its sequence number's nonce", async (e) => {
+		const nonce = hpkeNonce(keys.nonce, e.seq);
+		expect(hex(nonce)).toBe(e.nonce);
+		const key = await crypto.subtle.importKey(
+			"raw",
+			new Uint8Array(keys.key),
+			"AES-GCM",
+			false,
+			["encrypt"],
+		);
+		const ct = await crypto.subtle.encrypt(
+			{ name: "AES-GCM", iv: nonce, additionalData: unhex(e.aad) },
+			key,
+			unhex(e.pt),
+		);
+		expect(hex(ct)).toBe(e.ct);
+	});
+
+	it.each(
+		hpke.exports,
+	)("exports $L bytes for the context '$exporter_context'", (x) => {
+		expect(
+			hex(hpkeExport(keys.exporterSecret, unhex(x.exporter_context), x.L)),
+		).toBe(x.exported_value);
 	});
 });
