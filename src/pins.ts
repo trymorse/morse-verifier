@@ -14,15 +14,19 @@ const measured = {
 
 /** An entry of Morse's private pins names the backend commit and describe it was built from. An
  * entry of the public morse-pins names only the morse-enclave tag of its source. */
+const fromCommit = {
+	commit: z.string().min(1),
+	version: z.string().min(1),
+	...measured,
+};
+const fromTag = { tag: z.string().min(1), ...measured };
+const named = <T extends { tag: string }>({ tag, ...rest }: T) => ({
+	version: tag,
+	...rest,
+});
 const image = z.union([
-	z.strictObject({
-		commit: z.string().min(1),
-		version: z.string().min(1),
-		...measured,
-	}),
-	z
-		.strictObject({ tag: z.string().min(1), ...measured })
-		.transform(({ tag, ...rest }) => ({ version: tag, ...rest })),
+	z.strictObject(fromCommit),
+	z.strictObject(fromTag).transform(named),
 ]);
 export type PinnedImage = {
 	readonly commit?: string;
@@ -35,20 +39,60 @@ export type PinnedImage = {
 	readonly revoked: boolean;
 };
 
+const allZero = (p: Pcrs) =>
+	p.pcr0 === ZERO_PCR && p.pcr1 === ZERO_PCR && p.pcr2 === ZERO_PCR;
+
 const pinsSchema = z
 	.array(image)
 	.refine(
-		(all) =>
-			!all.some(
-				(p) =>
-					p.pcr0 === ZERO_PCR && p.pcr1 === ZERO_PCR && p.pcr2 === ZERO_PCR,
-			),
+		(all) => !all.some(allZero),
 		"an entry pins all-zero PCRs, which only a debug enclave reports",
 	);
 
 /** Parses the app's own pins or the public morse-pins `enclave_pins.json`. */
 export const parseEnclavePins = (input: unknown): readonly PinnedImage[] =>
 	pinsSchema.parse(input);
+
+const liveImage = z.union([
+	z.object(fromCommit),
+	z.object(fromTag).transform(named),
+]);
+const liveImageNamed = z.object({
+	environment: measured.environment,
+	pcr0: pcr,
+	pcr1: pcr,
+	pcr2: pcr,
+	revoked: z.unknown().optional(),
+});
+
+/** Reads the live list a tab may be older than: it ignores a field it doesn't know, and a malformed
+ * entry costs only itself. An entry that names an image and doesn't say `revoked: false` revokes
+ * that image, however else it is damaged, since dropping it could lose a revocation. Throws for
+ * anything but a list. Publishing still goes through parseEnclavePins. */
+export function parseLivePins(input: unknown): {
+	readonly pins: readonly PinnedImage[];
+	readonly dropped: number;
+} {
+	const pins: PinnedImage[] = [];
+	let dropped = 0;
+	for (const entry of z.array(z.unknown()).parse(input)) {
+		const read = liveImage.safeParse(entry);
+		if (read.success && !allZero(read.data)) {
+			pins.push(read.data);
+			continue;
+		}
+		dropped++;
+		const damaged = liveImageNamed.safeParse(entry);
+		if (damaged.success && damaged.data.revoked !== false)
+			pins.push({
+				...damaged.data,
+				version: "unreadable",
+				built_at: new Date(0).toISOString(),
+				revoked: true,
+			});
+	}
+	return { pins, dropped };
+}
 
 export type Pcrs = {
 	readonly pcr0: string;
@@ -83,11 +127,7 @@ export function checkPcrs(
 	environment: string,
 	pcrs: Pcrs,
 ): PinnedImage {
-	if (
-		pcrs.pcr0 === ZERO_PCR &&
-		pcrs.pcr1 === ZERO_PCR &&
-		pcrs.pcr2 === ZERO_PCR
-	)
+	if (allZero(pcrs))
 		throw new Error(
 			"the enclave reports all-zero PCRs, so it runs in debug mode",
 		);
