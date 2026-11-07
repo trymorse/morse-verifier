@@ -273,18 +273,27 @@ async function signedBy(child: Cert, parent: Cert): Promise<boolean> {
 			child.signature,
 			child.tbs,
 		);
-	const size = CURVES[parent.curve ?? ""].size;
-	const sig = strictSignature(child.signature);
-	if (!sig) return false;
-	const r = scalar(sig.r, size);
-	const s = scalar(sig.s, size);
-	if (!r || !s) return false;
+	const raw = rawEcdsaSignature(
+		child.signature,
+		CURVES[parent.curve ?? ""].size,
+	);
+	if (!raw) return false;
 	return crypto.subtle.verify(
 		{ name: "ECDSA", hash: alg.hash },
 		key,
-		concat([r, s]),
+		raw,
 		child.tbs,
 	);
+}
+
+/** A DER ECDSA-Sig-Value as the `size`-byte r ‖ s WebCrypto verifies, or undefined when it is
+ * not strict DER or either integer exceeds the curve. */
+export function rawEcdsaSignature(der: Bytes, size: number): Bytes | undefined {
+	const sig = strictSignature(der);
+	if (!sig) return undefined;
+	const r = scalar(sig.r, size);
+	const s = scalar(sig.s, size);
+	return r && s ? concat([r, s]) : undefined;
 }
 
 function checkIssuer(issuer: Cert, below: number, name: string) {
