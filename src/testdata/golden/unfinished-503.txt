@@ -1,0 +1,5 @@
+@askmorse/verify 0.0.0
+Checking the enclaves api.trymorse.ai lists
+
+Could not finish: https://api.trymorse.ai/v1/attestation answered 503. Nothing
+was checked.

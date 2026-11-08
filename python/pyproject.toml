@@ -1,0 +1,54 @@
+[project]
+name = "trymorse-verify"
+version = "0.0.0"
+description = "Checks that Morse's enclaves run an image AWS Nitro signed for, that Morse's signed list allows, and whose source is published."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Watermark Labs" }]
+keywords = ["morse", "aws-nitro", "attestation", "sigstore", "enclave"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Security :: Cryptography",
+]
+dependencies = [
+    "certifi>=2024.2.2",
+    "cryptography>=47",
+    "httpx>=0.28",
+    "sigstore>=4.5,<5",
+]
+
+[project.urls]
+Homepage = "https://github.com/trymorse/morse-verifier"
+Repository = "https://github.com/trymorse/morse-verifier"
+
+[project.scripts]
+trymorse-verify = "trymorse_verify.cli:run"
+
+[dependency-groups]
+dev = ["pytest>=8", "openai>=1.50"]
+
+[build-system]
+requires = ["hatchling==1.33.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/trymorse_verify"]
+
+# The tests read the TypeScript package's captures in ../src/testdata, which no sdist holds, so
+# they run from the repository only.
+[tool.hatch.build.targets.sdist]
+exclude = ["/tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B"]

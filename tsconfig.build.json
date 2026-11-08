@@ -1,0 +1,20 @@
+{
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts", "src/testing"],
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "nodenext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "rewriteRelativeImportExtensions": true,
+    "verbatimModuleSyntax": true,
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "strict": true,
+    "skipLibCheck": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  }
+}

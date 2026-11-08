@@ -1,0 +1,5 @@
+@askmorse/verify 0.0.0
+Checking the enclaves api.trymorse.ai lists
+
+Could not finish: api.trymorse.ai is rate-limiting this address (60 requests a
+minute). Run again in a minute. Nothing was checked.

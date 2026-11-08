@@ -39,7 +39,8 @@ export type PinnedImage = {
 	readonly revoked: boolean;
 };
 
-const allZero = (p: Pcrs) =>
+/** A debug-mode enclave's PCRs. */
+export const allZero = (p: Pcrs) =>
 	p.pcr0 === ZERO_PCR && p.pcr1 === ZERO_PCR && p.pcr2 === ZERO_PCR;
 
 const pinsSchema = z

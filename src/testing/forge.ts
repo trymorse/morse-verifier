@@ -70,10 +70,13 @@ export interface DocumentOptions {
 	digest?: string;
 	alg?: number;
 	signWith?: "leaf" | "stranger";
+	/** The document's public_key, the SPKI the enclave's TLS ends with. */
+	tlsKey?: Bytes;
+	moduleId?: string;
 }
 
-export async function forgeNitro() {
-	const now = new Date();
+/** A test root and documents it signs, with certificates valid for 30 days either side of `now`. */
+export async function forgeNitro(now = new Date()) {
 	const rootParty = await party("aws.nitro-enclaves");
 	const intermediate = await party("zonal.aws.nitro-enclaves");
 	const leafParty = await party("i-0123.enc0123.aws");
@@ -97,7 +100,7 @@ export async function forgeNitro() {
 		const pcrs = o.pcrs ?? PCR;
 		const payload = cbor(
 			new Map<string, Value>([
-				["module_id", "i-0123-enc0123"],
+				["module_id", o.moduleId ?? "i-0123-enc0123"],
 				["digest", o.digest ?? "SHA384"],
 				["timestamp", o.timestamp],
 				[
@@ -111,7 +114,7 @@ export async function forgeNitro() {
 				],
 				["certificate", leafDer],
 				["cabundle", [rootDer, intermediateDer]],
-				["public_key", null],
+				["public_key", o.tlsKey ?? null],
 				[
 					"user_data",
 					o.userData ??

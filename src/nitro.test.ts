@@ -131,6 +131,17 @@ describe("a real AWS Nitro document", () => {
 		expect(steps).toEqual(passed);
 	});
 
+	it("returns the PCRs and module_id it attests, and its public_key, which is null", async () => {
+		const attested = await verifyNitroDocument(document, expect_());
+		expect(attested.pcrs).toEqual({
+			pcr0: pins[0].pcr0,
+			pcr1: pins[0].pcr1,
+			pcr2: pins[0].pcr2,
+		});
+		expect(attested.moduleId).toBe("i-0a93e4d666586119b-enc01a14c4380fcd25f");
+		expect(attested.tlsKey).toBeNull();
+	});
+
 	it("is refused 31 minutes after its timestamp, and 6 minutes before it", async () => {
 		await expect(
 			verifyNitroDocument(document, expect_({ now: issuedAt + 31 * MINUTE })),

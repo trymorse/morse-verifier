@@ -1,0 +1,6 @@
+@askmorse/verify 0.0.0
+Checking the enclaves api.trymorse.ai lists
+
+Attestation  FAILED: api.trymorse.ai lists no enclave
+
+Failed at Attestation. Don't send anything to these enclaves.

@@ -1,0 +1,139 @@
+{
+  "about": "What attested() (src/node/attested.ts) and attested_client() (python/src/trymorse_verify/attested.py) do with each request URL: send it plain, seal it, or refuse it, and the path they send or seal. `python` is where the Python client differs: httpx sends a path as written, where fetch resolves its dot segments and backslashes first, so it refuses a path a server could read as another. Both packages' tests read this file.",
+  "origin": "https://api.trymorse.ai",
+  "cases": [
+    {
+      "method": "GET",
+      "url": "https://api.trymorse.ai/v1/models",
+      "sends": "plain",
+      "path": "/v1/models"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.trymorse.ai/v1/receipts/r1",
+      "sends": "plain",
+      "path": "/v1/receipts/r1"
+    },
+    {
+      "method": "POST",
+      "url": "https://api.trymorse.ai/v1/chat/completions?trace=1",
+      "sends": "sealed",
+      "path": "/v1/chat/completions?trace=1"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.trymorse.ai/v1/lookup/svc/a/b%2Fc?q=1",
+      "sends": "sealed",
+      "path": "/v1/lookup/svc/a/b%2Fc?q=1"
+    },
+    {
+      "method": "POST",
+      "url": "https://api.trymorse.ai/v1/embeddings",
+      "sends": "refused"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.trymorse.ai/v1/receipts/..",
+      "sends": "refused"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.trymorse.ai/v1/receipts/%2e%2e",
+      "sends": "refused"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.trymorse.ai/v1/receipts/%2E",
+      "sends": "refused"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.trymorse.ai/v1/videos/%2e%2e",
+      "sends": "refused"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.trymorse.ai/v1/videos/%2E%2E",
+      "sends": "refused"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.trymorse.ai/v1/receipts/a\\..\\..\\chat",
+      "sends": "refused"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.trymorse.ai/v1/research/%2e",
+      "sends": "refused"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.trymorse.ai/v1/research/.%2E/x",
+      "sends": "refused"
+    },
+    {
+      "method": "POST",
+      "url": "https://api.trymorse.ai/v1/models/%2e%2e/chat/completions",
+      "sends": "sealed",
+      "path": "/v1/chat/completions",
+      "python": {
+        "sends": "refused"
+      }
+    },
+    {
+      "method": "GET",
+      "url": "https://api.trymorse.ai/v1/lookup/s/%2e%2e/%2e%2e/models",
+      "sends": "plain",
+      "path": "/v1/models",
+      "python": {
+        "sends": "refused"
+      }
+    },
+    {
+      "method": "GET",
+      "url": "https://api.trymorse.ai/v1\\models",
+      "sends": "plain",
+      "path": "/v1/models",
+      "python": {
+        "sends": "refused"
+      }
+    },
+    {
+      "method": "GET",
+      "url": "https://API.TRYMORSE.AI/v1/models",
+      "sends": "plain",
+      "path": "/v1/models"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.trymorse.ai:443/v1/models",
+      "sends": "plain",
+      "path": "/v1/models"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.trymorse.ai:8443/v1/models",
+      "sends": "refused"
+    },
+    {
+      "method": "POST",
+      "url": "https://u:p@api.trymorse.ai/v1/chat/completions",
+      "sends": "refused"
+    },
+    {
+      "method": "GET",
+      "url": "https://evil.example\\@api.trymorse.ai/v1/models",
+      "sends": "refused"
+    },
+    {
+      "method": "POST",
+      "url": "https://api.trymorse.ai\\@evil.example/v1/chat/completions",
+      "sends": "refused"
+    },
+    {
+      "method": "POST",
+      "url": "https://api.openai.com/v1/chat/completions",
+      "sends": "refused"
+    }
+  ]
+}

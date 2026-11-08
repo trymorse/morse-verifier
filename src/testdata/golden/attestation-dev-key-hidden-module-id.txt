@@ -1,0 +1,7 @@
+@askmorse/verify 0.0.0
+Checking the enclaves api.trymorse.ai lists
+
+Attestation  FAILED: document 1 of 1: user_data does not name a prod key:
+             morse-proxy-hpke-v1|dev|\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}
+
+Failed at Attestation. Don't send anything to these enclaves.

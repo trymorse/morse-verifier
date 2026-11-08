@@ -1,0 +1,164 @@
+# Publishes @askmorse/verify to npm from a v* tag, which Morse's release bot pushes here with each
+# release of the app. npm's trusted publishing signs it with this run's provenance, and no token is
+# stored. A tag on a commit whose code npm already has, as the version of another tag on it (a
+# release that changed nothing here), publishes nothing. Until npm has it, every tag on the commit
+# publishes, so a run that was skipped or failed never keeps that code off npm.
+#
+# The job runs only once the repository variable NPM_PUBLISH is true. Trusted publishing can't make a
+# package's first version. Nothing is on npm yet, and this file does not publish, set NPM_PUBLISH, or
+# add a trusted publisher. The first version is a real release, selected after the verifier changes
+# merge and the export lands in trymorse/morse-verifier: that release's tag with the v dropped. Do not
+# publish a placeholder, 0.0.0, or a bootstrap tag. npm would serve it as latest, with no provenance,
+# and users would run it. After a maintainer reviews that export and approves the release:
+#   1. The @askmorse org exists (the @trymorse and @morse scopes are taken).
+#   2. From a checkout of the exported tag, a maintainer of that org, signed in to npm with 2FA,
+#      publishes that tag's version with npm publish --access public. Create no token and store none.
+#      npm provenance applies to publishes from GitHub Actions or GitLab CI, so this first version has
+#      none: check its tarball against the tag (npm pack, and npm ci && npm run build there), then log
+#      out. The command stays trymorse-verify, the same name as the Python package.
+#   3. After that version exists, and only with the maintainer's approval:
+#      npm trust github @askmorse/verify --file release.yml --repo trymorse/morse-verifier --allow-publish
+#      (or the trusted publisher on the package's settings page on npmjs.com).
+#   4. Set NPM_PUBLISH to true right before the next release tag. npm drops a new trusted publisher
+#      that hasn't published within 2 days. Do not set the variable before that approval.
+#
+# The pypi job publishes trymorse-verify, the Python port in python/, to PyPI from the same tag, by
+# the same rule: a tag whose commit PyPI already has under another tag's version publishes nothing.
+# PyPI's trusted publishing needs no token, and pypa/gh-action-pypi-publish uploads a PEP 740
+# attestation of this run with each file. It runs only once the repository variable PYPI_PUBLISH is
+# true, and apart from the npm job, with its own tests as its gate: either registry can be set up
+# first, and a tag whose npm tests fail still publishes to PyPI once the Python tests pass.
+#
+# PyPI's trusted publishing can make a project's first release through a "pending" publisher
+# (https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/), but that reserves
+# no name: another account registering trymorse-verify first invalidates it. The app's verify page
+# and the READMEs tell users to run trymorse-verify from the release that ships them, before any
+# tag reaches this workflow, and whoever holds the name then runs their code on those users'
+# machines. So claim the PyPI name by hand first. That is separate from npm, which gets no
+# placeholder. Set PyPI up once, in this order, with step 1 done before the app release that adds
+# the page's Python tab:
+#   1. Upload a placeholder by hand: in python/, at the tree's version 0.0.0, run uv build, then
+#      uv publish with an API token scoped to your account
+#      (https://pypi.org/manage/account/token/), and delete the token. It has no attestation, and
+#      pip installs it only until this workflow first publishes a higher version.
+#   2. On the project's page on pypi.org (Manage > Publishing), add a trusted publisher for GitHub:
+#      owner trymorse, repository morse-verifier, workflow release.yml, environment pypi.
+#   3. Create the environment pypi in this repository's settings (Settings > Environments), and
+#      limit it to v* tags.
+#   4. Set PYPI_PUBLISH to true, then push the next release tag.
+name: release
+
+on:
+  push:
+    tags:
+      - v*
+
+permissions:
+  contents: read
+
+jobs:
+  npm:
+    if: ${{ vars.NPM_PUBLISH == 'true' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: new
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          [[ $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$TAG is not a vYYYY.M.N release"; exit 1; }
+          publish=true
+          for other in $(git tag --points-at HEAD | grep -vxF "$TAG" || true); do
+            [[ $other =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
+            if [ -n "$(npm view "@askmorse/verify@${other#v}" version 2>/dev/null)" ]; then
+              echo "::notice::npm has this commit as ${other#v}, from $other; $TAG publishes nothing"
+              publish=false
+              break
+            fi
+          done
+          echo "publish=$publish" >>"$GITHUB_OUTPUT"
+      - if: steps.new.outputs.publish == 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.22.1
+          package-manager-cache: false
+          registry-url: https://registry.npmjs.org
+      - if: steps.new.outputs.publish == 'true'
+        run: npm ci --ignore-scripts --no-audit --no-fund && npm test && npm run build
+      - if: steps.new.outputs.publish == 'true'
+        env:
+          TAG: ${{ github.ref_name }}
+        run: npm version --no-git-tag-version "${TAG#v}"
+      - name: Pack it, install the tarball, and run its CLI
+        if: steps.new.outputs.publish == 'true'
+        run: |
+          npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP"
+          mkdir "$RUNNER_TEMP/try"
+          cd "$RUNNER_TEMP/try"
+          npm init -y >/dev/null
+          npm install --ignore-scripts --no-audit --no-fund "$RUNNER_TEMP"/askmorse-verify-*.tgz
+          npx --no -- trymorse-verify --version
+          npx --no -- trymorse-verify --help
+      - if: steps.new.outputs.publish == 'true'
+        run: npm publish --ignore-scripts
+
+  pypi:
+    if: ${{ vars.PYPI_PUBLISH == 'true' }}
+    runs-on: ubuntu-24.04
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: new
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          [[ $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$TAG is not a vYYYY.M.N release"; exit 1; }
+          publish=true
+          for other in $(git tag --points-at HEAD | grep -vxF "$TAG" || true); do
+            [[ $other =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
+            if curl -sfo /dev/null "https://pypi.org/pypi/trymorse-verify/${other#v}/json"; then
+              echo "::notice::PyPI has this commit as ${other#v}, from $other; $TAG publishes nothing"
+              publish=false
+              break
+            fi
+          done
+          echo "publish=$publish" >>"$GITHUB_OUTPUT"
+      - if: steps.new.outputs.publish == 'true'
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: 0.13.7
+          python-version: "3.12"
+          enable-cache: false
+      - if: steps.new.outputs.publish == 'true'
+        working-directory: python
+        run: uv run --locked pytest
+      - name: Set the version from the tag, and build
+        if: steps.new.outputs.publish == 'true'
+        working-directory: python
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          uv version --frozen "${TAG#v}"
+          uv build --out-dir ../dist
+      - name: Install the wheel and run its CLI
+        if: steps.new.outputs.publish == 'true'
+        run: |
+          uvx --no-cache --from "$(ls dist/trymorse_verify-*.whl)" trymorse-verify --version
+          uvx --no-cache --from "$(ls dist/trymorse_verify-*.whl)" trymorse-verify --help
+      - if: steps.new.outputs.publish == 'true'
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          packages-dir: dist/
+          attestations: true

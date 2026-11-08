@@ -1,0 +1,22 @@
+@askmorse/verify 0.0.0
+Checking the enclaves api.trymorse.ai lists
+
+Attestation  2 enclaves, each signed by AWS Nitro (root 641a0321…8f79bb5b)
+             key 8f6198f0b59e34cf, signed 6 min ago
+             key 0032c6519a4b546d, signed 8 min ago
+             PCR0 4fccf46baafd…ef6e1606
+             PCR1 3b4a7e1b5f13…a0974d03
+             PCR2 de079dd37c0b…1c4d4f35
+Allowed      on Morse's signed list of prod images, not revoked
+             list 290, logged 48 min ago at Rekor entry 3714441255
+             https://search.sigstore.dev/?logIndex=3714441255
+Source       v2026.11.4-pins-23c1570, commit 696ab5a852e0 on main of
+             github.com/trymorse/morse-enclave, names these PCRs
+Rebuild      not run. These PCRs are the ones Morse's CI wrote in that commit.
+             Run with --rebuild to build it here and compare (Docker, ~2 min).
+TLS          this connection to api.trymorse.ai ended inside an attested enclave
+             (key b0474adfce42421f)
+
+Passed. The enclaves api.trymorse.ai lists run v2026.11.4-pins-23c1570 of
+github.com/trymorse/morse-enclave, as published (not rebuilt here).
+Pin this release in CI: --release 696ab5a852e09f3ab11e49156f3892e02796db5a

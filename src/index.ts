@@ -7,6 +7,7 @@ export {
 } from "./attestation.ts";
 export { decodeCbor } from "./cbor.ts";
 export {
+	type AttestedDocument,
 	type AttestedKey,
 	checkFresh,
 	type Expectation,

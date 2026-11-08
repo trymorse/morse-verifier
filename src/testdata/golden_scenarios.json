@@ -1,0 +1,353 @@
+{
+  "about": "The scenarios the CLI's printed output is pinned for, in the TypeScript (src/node/golden.test.ts) and Python (python/tests/test_golden.py) CLIs alike, each against golden/<name>.txt. A world changes one part of testing/world.ts's captures: attestation replies in order (instances: live0 and live1 are the capture's documents, -flipped changes a document's last byte, forged:<name> is a document of golden_forged.json under its root), the signed list (290, 290-changed, 280), the git log (drop the newest commits, or replace text), git or docker missing, docker's arch or a down daemon, what build.sh measures, the TLS key served, and the clock. Write the outputs with UPDATE_GOLDEN=1 npx vitest run packages/verifier/src/node/golden.test.ts.",
+  "now": "2026-11-06T10:40:00Z",
+  "tmpdir": "/tmp",
+  "scenarios": [
+    {
+      "name": "passed",
+      "argv": [],
+      "world": {}
+    },
+    {
+      "name": "attestation-tampered",
+      "argv": [],
+      "world": {
+        "attestation": [
+          {
+            "instances": [
+              "live0-flipped",
+              "live1"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "attestation-too-old",
+      "argv": [],
+      "world": {
+        "now": "2026-11-06T11:03:30Z"
+      }
+    },
+    {
+      "name": "attestation-ahead",
+      "argv": [],
+      "world": {
+        "now": "2026-11-06T10:27:30Z"
+      }
+    },
+    {
+      "name": "attestation-none",
+      "argv": [],
+      "world": {
+        "attestation": [
+          {
+            "instances": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "attestation-not-a-list",
+      "argv": [],
+      "world": {
+        "attestation": [
+          {
+            "json": {
+              "object": "list",
+              "data": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "attestation-debug",
+      "argv": [],
+      "world": {
+        "root": "forged",
+        "attestation": [
+          {
+            "instances": [
+              "forged:debug"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "attestation-dev-key-hidden-module-id",
+      "argv": [],
+      "world": {
+        "root": "forged",
+        "attestation": [
+          {
+            "instances": [
+              "forged:dev-hidden"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "attestation-429-then-passed",
+      "argv": [],
+      "world": {
+        "attestation": [
+          {
+            "status": 429,
+            "headers": {
+              "retry-after": "7"
+            },
+            "body": "slow down"
+          },
+          {
+            "instances": [
+              "live0",
+              "live1"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "unfinished-rate-limited",
+      "argv": [],
+      "world": {
+        "attestation": [
+          {
+            "status": 429,
+            "headers": {
+              "retry-after": "600"
+            },
+            "body": ""
+          }
+        ]
+      }
+    },
+    {
+      "name": "unfinished-503",
+      "argv": [],
+      "world": {
+        "attestation": [
+          {
+            "status": 503,
+            "body": "x"
+          }
+        ]
+      }
+    },
+    {
+      "name": "allowed-statement-changed",
+      "argv": [],
+      "world": {
+        "list": "290-changed"
+      }
+    },
+    {
+      "name": "allowed-unlisted",
+      "argv": [],
+      "world": {
+        "list": "280"
+      }
+    },
+    {
+      "name": "allowed-revoked",
+      "argv": [],
+      "world": {
+        "root": "forged",
+        "attestation": [
+          {
+            "instances": [
+              "forged:revoked"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "source-unpublished",
+      "argv": [],
+      "world": {
+        "log": {
+          "drop": 1
+        }
+      }
+    },
+    {
+      "name": "source-no-git",
+      "argv": [],
+      "world": {
+        "git": "missing"
+      }
+    },
+    {
+      "name": "source-hidden-subject",
+      "argv": [],
+      "world": {
+        "log": {
+          "replace": [
+            "v2026.11.4-pins-23c1570",
+            "v2026.11.4\u001b[1A\u001b[2KPassed.\u001b[8m\u202e"
+          ]
+        }
+      }
+    },
+    {
+      "name": "release-by-name",
+      "argv": [
+        "--release",
+        "v2026.11.4-pins-23c1570"
+      ],
+      "world": {}
+    },
+    {
+      "name": "release-by-commit",
+      "argv": [
+        "--release",
+        "696ab5a852e09f3ab11e49156f3892e02796db5a"
+      ],
+      "world": {}
+    },
+    {
+      "name": "release-other",
+      "argv": [
+        "--release",
+        "v2026.11.4-pins-86774b6"
+      ],
+      "world": {}
+    },
+    {
+      "name": "release-unknown",
+      "argv": [
+        "--release",
+        "v1.8.2"
+      ],
+      "world": {}
+    },
+    {
+      "name": "release-subject-is-not-a-commit",
+      "argv": [
+        "--release",
+        "696ab5a852e0"
+      ],
+      "world": {}
+    },
+    {
+      "name": "two-images",
+      "argv": [],
+      "world": {
+        "root": "forged",
+        "attestation": [
+          {
+            "instances": [
+              "forged:live",
+              "forged:older"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "two-images-release",
+      "argv": [
+        "--release",
+        "v2026.11.4-pins-23c1570"
+      ],
+      "world": {
+        "root": "forged",
+        "attestation": [
+          {
+            "instances": [
+              "forged:live",
+              "forged:older"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "rebuild-match",
+      "argv": [
+        "--rebuild"
+      ],
+      "world": {}
+    },
+    {
+      "name": "rebuild-match-release",
+      "argv": [
+        "--rebuild",
+        "--release",
+        "696ab5a852e09f3ab11e49156f3892e02796db5a"
+      ],
+      "world": {}
+    },
+    {
+      "name": "rebuild-mismatch",
+      "argv": [
+        "--rebuild"
+      ],
+      "world": {
+        "build": {
+          "pcr0": "4fccf46baafdf7362402ef287d332e49db794e98d0a6fff6337c05915835160cd9b619c47d063d7b19e9e03eef6e1606",
+          "pcr1": "3b4a7e1b5f13c5a1000b3ed32ef8995ee13e9876329f9bc72650b918329ef9cf4e2e4d1e1e37375dab0ba56ba0974d03",
+          "pcr2": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+    },
+    {
+      "name": "rebuild-build-fails",
+      "argv": [
+        "--rebuild"
+      ],
+      "world": {
+        "docker": "amd64",
+        "build": "fails"
+      }
+    },
+    {
+      "name": "rebuild-no-docker",
+      "argv": [
+        "--rebuild"
+      ],
+      "world": {
+        "docker": "missing"
+      }
+    },
+    {
+      "name": "rebuild-docker-down",
+      "argv": [
+        "--rebuild"
+      ],
+      "world": {
+        "docker": "down"
+      }
+    },
+    {
+      "name": "tls-match",
+      "argv": [],
+      "world": {
+        "tls": {
+          "spkiSha256": "b0474adfce42421fb12c43ebee26901a97ebbf11f32d4a225ffa5767c534b679",
+          "issuer": "i-0d45a659f78879f74"
+        }
+      }
+    },
+    {
+      "name": "tls-unreachable",
+      "argv": [],
+      "world": {
+        "tls": {
+          "error": "connect ECONNREFUSED"
+        }
+      }
+    },
+    {
+      "name": "other-host",
+      "argv": [
+        "verify.example.com"
+      ],
+      "world": {}
+    }
+  ]
+}

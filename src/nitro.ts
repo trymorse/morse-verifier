@@ -16,6 +16,14 @@ export interface AttestedKey {
 	readonly issuedAt: number;
 }
 
+/** What a Nitro document attests besides its key: its PCRs, its module_id, and the key its
+ * public_key field names (an SPKI the enclave's TLS can end with), or null for none. */
+export interface AttestedDocument extends AttestedKey {
+	readonly pcrs: Pcrs;
+	readonly moduleId: string | null;
+	readonly tlsKey: Bytes | null;
+}
+
 export interface Expectation {
 	readonly environment: string;
 	readonly pins: readonly PinnedImage[];
@@ -70,7 +78,7 @@ export async function verifyNitroDocument(
 	document: Bytes,
 	expect: Expectation,
 	report?: (step: NitroStep) => void,
-): Promise<AttestedKey> {
+): Promise<AttestedDocument> {
 	let sign1 = decodeCbor(document);
 	if (
 		!Array.isArray(sign1) &&
@@ -138,5 +146,14 @@ export async function verifyNitroDocument(
 		expect.environment,
 	);
 	report?.({ step: "key", publicKey });
-	return { publicKey, keyId: await keyIdOf(publicKey), issuedAt };
+	const moduleId = field(payload, "module_id");
+	const tlsKey = field(payload, "public_key");
+	return {
+		publicKey,
+		keyId: await keyIdOf(publicKey),
+		issuedAt,
+		pcrs: pcrsOf,
+		moduleId: typeof moduleId === "string" ? moduleId : null,
+		tlsKey: tlsKey instanceof Uint8Array ? tlsKey : null,
+	};
 }

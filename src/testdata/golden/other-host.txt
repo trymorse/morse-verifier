@@ -1,0 +1,5 @@
+@askmorse/verify 0.0.0
+Checking the enclaves verify.example.com lists
+
+Could not finish: https://verify.example.com/v1/attestation answered 404.
+Nothing was checked.

@@ -1,0 +1,7 @@
+@askmorse/verify 0.0.0
+Checking the enclaves api.trymorse.ai lists
+
+Attestation  FAILED: enclave i-0d45a659f78879f74-enc01a1aff4a42aa553: the
+             document is 6 minutes ahead of this device's clock
+
+Failed at Attestation. Don't send anything to these enclaves.

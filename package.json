@@ -1,27 +1,54 @@
 {
-  "name": "@morse/verifier",
+  "name": "@askmorse/verify",
   "version": "0.0.0",
-  "private": true,
   "license": "MIT",
   "type": "module",
-  "description": "Verifies Morse's AWS Nitro enclave in the browser and seals requests to it.",
+  "description": "Checks that Morse's AWS Nitro enclaves run an image on Morse's signed list whose source is public in trymorse/morse-enclave.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/trymorse/morse-verifier.git"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "trymorse-verify": "dist/node/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
   "exports": {
-    ".": "./src/index.ts",
-    "./testing/*": "./src/testing/*.ts",
-    "./*": "./src/*.ts"
+    ".": {
+      "types": "./dist/node/index.d.ts",
+      "default": "./dist/node/index.js"
+    },
+    "./browser": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
     "@noble/curves": "2.4.0",
     "@noble/hashes": "2.4.0",
     "@peculiar/asn1-schema": "2.10.0",
     "@peculiar/asn1-x509": "2.10.0",
+    "@sigstore/bundle": "5.0.1",
+    "@sigstore/protobuf-specs": "0.5.2",
+    "@sigstore/verify": "4.1.3",
     "zod": "4.6.5"
   },
   "devDependencies": {
     "@peculiar/asn1-ecc": "2.10.0",
+    "@types/node": "22.20.4",
+    "typescript": "6.0.3",
     "vitest": "5.0.2"
   }
 }

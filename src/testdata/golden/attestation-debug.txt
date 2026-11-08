@@ -1,0 +1,7 @@
+@askmorse/verify 0.0.0
+Checking the enclaves api.trymorse.ai lists
+
+Attestation  FAILED: enclave i-0123-enc0123: the enclave reports all-zero PCRs,
+             so it runs in debug mode
+
+Failed at Attestation. Don't send anything to these enclaves.
