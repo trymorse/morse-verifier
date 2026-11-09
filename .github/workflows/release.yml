@@ -1,51 +1,6 @@
-# Publishes @askmorse/verify to npm from a v* tag, which Morse's release bot pushes here with each
-# release of the app. npm's trusted publishing signs it with this run's provenance, and no token is
-# stored. A tag on a commit whose code npm already has, as the version of another tag on it (a
-# release that changed nothing here), publishes nothing. Until npm has it, every tag on the commit
-# publishes, so a run that was skipped or failed never keeps that code off npm.
-#
-# The job runs only once the repository variable NPM_PUBLISH is true. Trusted publishing can't make a
-# package's first version. Nothing is on npm yet, and this file does not publish, set NPM_PUBLISH, or
-# add a trusted publisher. The first version is a real release, selected after the verifier changes
-# merge and the export lands in trymorse/morse-verifier: that release's tag with the v dropped. Do not
-# publish a placeholder, 0.0.0, or a bootstrap tag. npm would serve it as latest, with no provenance,
-# and users would run it. After a maintainer reviews that export and approves the release:
-#   1. The @askmorse org exists (the @trymorse and @morse scopes are taken).
-#   2. From a checkout of the exported tag, a maintainer of that org, signed in to npm with 2FA,
-#      publishes that tag's version with npm publish --access public. Create no token and store none.
-#      npm provenance applies to publishes from GitHub Actions or GitLab CI, so this first version has
-#      none: check its tarball against the tag (npm pack, and npm ci && npm run build there), then log
-#      out. The command stays trymorse-verify, the same name as the Python package.
-#   3. After that version exists, and only with the maintainer's approval:
-#      npm trust github @askmorse/verify --file release.yml --repo trymorse/morse-verifier --allow-publish
-#      (or the trusted publisher on the package's settings page on npmjs.com).
-#   4. Set NPM_PUBLISH to true right before the next release tag. npm drops a new trusted publisher
-#      that hasn't published within 2 days. Do not set the variable before that approval.
-#
-# The pypi job publishes trymorse-verify, the Python port in python/, to PyPI from the same tag, by
-# the same rule: a tag whose commit PyPI already has under another tag's version publishes nothing.
-# PyPI's trusted publishing needs no token, and pypa/gh-action-pypi-publish uploads a PEP 740
-# attestation of this run with each file. It runs only once the repository variable PYPI_PUBLISH is
-# true, and apart from the npm job, with its own tests as its gate: either registry can be set up
-# first, and a tag whose npm tests fail still publishes to PyPI once the Python tests pass.
-#
-# PyPI's trusted publishing can make a project's first release through a "pending" publisher
-# (https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/), but that reserves
-# no name: another account registering trymorse-verify first invalidates it. The app's verify page
-# and the READMEs tell users to run trymorse-verify from the release that ships them, before any
-# tag reaches this workflow, and whoever holds the name then runs their code on those users'
-# machines. So claim the PyPI name by hand first. That is separate from npm, which gets no
-# placeholder. Set PyPI up once, in this order, with step 1 done before the app release that adds
-# the page's Python tab:
-#   1. Upload a placeholder by hand: in python/, at the tree's version 0.0.0, run uv build, then
-#      uv publish with an API token scoped to your account
-#      (https://pypi.org/manage/account/token/), and delete the token. It has no attestation, and
-#      pip installs it only until this workflow first publishes a higher version.
-#   2. On the project's page on pypi.org (Manage > Publishing), add a trusted publisher for GitHub:
-#      owner trymorse, repository morse-verifier, workflow release.yml, environment pypi.
-#   3. Create the environment pypi in this repository's settings (Settings > Environments), and
-#      limit it to v* tags.
-#   4. Set PYPI_PUBLISH to true, then push the next release tag.
+# Publishes @askmorse/verify to npm and trymorse-verify to PyPI from each v* tag, through trusted
+# publishing with no stored token. Each job runs only once its NPM_PUBLISH or PYPI_PUBLISH variable is true.
+
 name: release
 
 on:
@@ -60,6 +15,9 @@ jobs:
   npm:
     if: ${{ vars.NPM_PUBLISH == 'true' }}
     runs-on: ubuntu-24.04
+    # npm's trusted publisher names this environment, which allows v* tags alone, so a run from a
+    # branch, or from a tag no one may create, can't publish.
+    environment: npm
     permissions:
       contents: read
       id-token: write

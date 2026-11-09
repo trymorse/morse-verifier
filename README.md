@@ -1,10 +1,12 @@
 # @askmorse/verify
 
-Checks that the enclaves serving Morse's API run code you can read. One command, with no account:
+Checks that the enclaves serving Morse's API run code you can read. One command, with no account.
 
 ```sh
-npx @askmorse/verify
+npx @askmorse/verify@2026.11.14
 ```
+
+The Python port isn't published yet: run it with `uv run trymorse-verify` in `python/` of a clone.
 
 It needs Node 24 or later and `git`. It asks `api.trymorse.ai` (or the host you name) for the AWS Nitro attestation document of each enclave it lists, and checks each one against three public records: AWS's Nitro root, Morse's signed list of images in Sigstore's public log, and the source on GitHub. With `--rebuild`, it also builds that source on your machine and compares the result.
 
@@ -168,11 +170,13 @@ Unlike the command line, an enclave that fails doesn't stop requests to the ones
 
 ## Python
 
-[`python/`](python) is `trymorse-verify` on PyPI, the same command, `verify()`, and `attested_client()` for Python 3.10 or later:
+[`python/`](python) is `trymorse-verify`, the same command, `verify()`, and `attested_client()` for Python 3.10 or later. It is not yet published on PyPI. To run it today, from `python/` in a clone:
 
 ```sh
-uvx trymorse-verify
+uv run trymorse-verify
 ```
+
+Once released: `uvx trymorse-verify==<version>`.
 
 It prints the same lines as `npx @askmorse/verify` (but the first, which names the package) and exits with the same codes. Both packages' tests render the scenarios of [src/testdata/golden_scenarios.json](src/testdata/golden_scenarios.json) and compare them with the same files in [src/testdata/golden](src/testdata/golden), so neither can drift from the other.
 
@@ -188,11 +192,11 @@ client = OpenAI(base_url="https://api.trymorse.ai/v1", api_key=os.environ["MORSE
 
 They seal the same routes with the same headers, which [src/testdata/protocol.json](src/testdata/protocol.json) lists from [sealed_routes.ts](src/sealed_routes.ts) for the Python tests to hold them to, and the Python seal reproduces the backend's vectors in [src/testdata/seal_vectors.json](src/testdata/seal_vectors.json) byte for byte. The relay sees only the API key, the sealed content type, and `Content-Length` and `Host`. A refusal raises `VerifyError`, `NotSent`, or `SealedReplyError` rather than an `Error`. [python/README.md](python/README.md) has the rest.
 
-Each tag publishes `trymorse-verify` to PyPI with the same version from this repository's `release.yml`, through PyPI's trusted publishing, and each file carries a PEP 740 attestation naming the workflow run that built it, which its page on PyPI shows under Provenance (`https://pypi.org/project/trymorse-verify/<version>/#files`). Pin it as you would the npm package: `uvx trymorse-verify==<version>`.
+Once PyPI is set up, each tag publishes `trymorse-verify` to PyPI with the same version from this repository's `release.yml`, through PyPI's trusted publishing, and each file carries a PEP 740 attestation naming the workflow run that built it, which its page on PyPI shows under Provenance (`https://pypi.org/project/trymorse-verify/<version>/#files`). Pin it as you would the npm package: `uvx trymorse-verify==<version>`.
 
 ## Versions, provenance, and pinning
 
-No release of `@askmorse/verify` has been published, and npm has no such package. The first version is a real release, selected after the verifier changes merge and the package is exported to this repository, and it is that release's tag with the leading `v` dropped. Nothing here chooses the number. The sample above and the commands below say `<version>` until that release exists. Do not install the package before it does, and pin the version you reviewed. The command is `trymorse-verify`, the same name as the Python package.
+The first release of `@askmorse/verify` on npm is `2026.11.14`. Each version is a release's tag with the leading `v` dropped. The sample above and the commands below say `<version>` for the version you pin: pin the version you reviewed. The command is `trymorse-verify`, the same name as the Python package.
 
 This repository is published from Morse's private monorepo on each production release of the app, tagged with that release (`vYYYY.M.N`). From the second version on, the tag publishes the same version to npm from this repository's `release.yml`, through npm's trusted publishing, so each version CI publishes carries a provenance statement naming the commit and workflow it was built from. The first version is published by a maintainer from the exported tag, because npm's trusted publishing cannot create a package, and that version has no provenance statement. A release that changes nothing here gets a tag on the commit it shipped, and npm gets no new version if it already has that commit's code under an earlier tag's version. The tree keeps version `0.0.0`; only the published package carries the release's. The app's version and the enclave's releases (`v2026.11.4-pins-23c1570`) are separate series.
 
@@ -206,7 +210,7 @@ npm view @askmorse/verify@<version> dist.attestations
 
 `npm audit signatures` checks the registry's signature and the provenance of each installed package. The first version has no provenance, so check its tarball against the tag. To read exactly what runs, compare the tarball (`npm pack @askmorse/verify@<version>`) with `npm ci && npm run build` at the tag.
 
-In GitHub Actions, once a version exists:
+In GitHub Actions:
 
 ```yaml
 - uses: actions/setup-node@v7

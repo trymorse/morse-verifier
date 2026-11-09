@@ -1,12 +1,14 @@
 # trymorse-verify
 
-Checks that the enclaves serving Morse's API run code you can read. One command, with no account:
+Checks that the enclaves serving Morse's API run code you can read. One command, with no account.
+
+Not yet published on PyPI. To run it today:
 
 ```sh
-uvx trymorse-verify
+git clone https://github.com/trymorse/morse-verifier && cd morse-verifier/python && uv run trymorse-verify
 ```
 
-or `pipx run trymorse-verify`, or `pip install trymorse-verify && trymorse-verify`, or `python -m trymorse_verify`. It needs Python 3.10 or later and `git`.
+Once released: `uvx trymorse-verify==<version>`, or `pipx run trymorse-verify==<version>`, or `pip install trymorse-verify==<version> && trymorse-verify`, or `python -m trymorse_verify`. It needs Python 3.10 or later and `git`.
 
 This is the Python port of [`@askmorse/verify`](https://www.npmjs.com/package/@askmorse/verify), with [`attested_client()`](#attested_client) for OpenAI's Python SDK. It makes the same checks, prints the same lines (but the first, which names this package), and exits with the same codes: the tests of both render the same scenarios and compare them with the same files. It asks `api.trymorse.ai` (or the host you name) for the AWS Nitro attestation document of each enclave it lists, and checks each one against three public records: AWS's Nitro root, Morse's signed list of images in Sigstore's public log, and the source on GitHub. With `--rebuild`, it also builds that source on your machine with Docker and compares the result.
 
