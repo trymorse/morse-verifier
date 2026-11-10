@@ -1,5 +1,5 @@
 {
-  "about": "What attested() (src/node/attested.ts) and attested_client() (python/src/trymorse_verify/attested.py) do with each request URL: send it plain, seal it, or refuse it, and the path they send or seal. `python` is where the Python client differs: httpx sends a path as written, where fetch resolves its dot segments and backslashes first, so it refuses a path a server could read as another. Both packages' tests read this file.",
+  "about": "What attested() (src/node/attested.ts) does with each request URL: send it plain, seal it, or refuse it, and the path it sends or seals. src/node/attested.test.ts reads this file.",
   "origin": "https://api.trymorse.ai",
   "cases": [
     {
@@ -75,28 +75,19 @@
       "method": "POST",
       "url": "https://api.trymorse.ai/v1/models/%2e%2e/chat/completions",
       "sends": "sealed",
-      "path": "/v1/chat/completions",
-      "python": {
-        "sends": "refused"
-      }
+      "path": "/v1/chat/completions"
     },
     {
       "method": "GET",
       "url": "https://api.trymorse.ai/v1/lookup/s/%2e%2e/%2e%2e/models",
       "sends": "plain",
-      "path": "/v1/models",
-      "python": {
-        "sends": "refused"
-      }
+      "path": "/v1/models"
     },
     {
       "method": "GET",
       "url": "https://api.trymorse.ai/v1\\models",
       "sends": "plain",
-      "path": "/v1/models",
-      "python": {
-        "sends": "refused"
-      }
+      "path": "/v1/models"
     },
     {
       "method": "GET",

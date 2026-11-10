@@ -24,7 +24,7 @@ export const SEALED_PATTERNS = [
 ] as const;
 
 /** The routes the relay answers alone, which carry no content: there is nothing in them to seal. */
-export const PLAIN_PATTERNS = [
+const PLAIN_PATTERNS = [
 	"GET /v1/models",
 	"GET /v1/attestation",
 	"GET /v1/receipts/{id}",
@@ -93,7 +93,7 @@ export const CONTENT_HEADERS = new Map(
  * name the client, and the transport's, which the sealed request sets for itself (openai 4 sets
  * Content-Length). The key moves to the outer request. Any other header that is not a content
  * header refuses the request. */
-export const DROPPED_HEADERS = [
+const DROPPED_HEADERS = [
 	"authorization",
 	"accept",
 	"user-agent",
@@ -114,7 +114,7 @@ export const droppedHeader = (name: string) =>
 
 /** The headers the relay sets beside a sealed reply, outside the seal, so nothing authenticates
  * them. A reply's own header of the same name, from inside the seal, wins. */
-export const RELAY_REPLY_HEADERS = [
+const RELAY_REPLY_HEADERS = [
 	"X-Request-Id",
 	"X-Funding",
 	"X-Included-Lane",

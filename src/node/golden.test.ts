@@ -1,6 +1,5 @@
 // What the CLI prints for each scenario of testdata/golden_scenarios.json, held to
-// testdata/golden/<name>.txt. The Python CLI (python/tests/test_golden.py) renders the same
-// scenarios and must print the same bytes but its first line, so the two can't drift apart.
+// testdata/golden/<name>.txt.
 // UPDATE_GOLDEN=1 writes the files, and golden_forged.json's documents if it has none.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -55,9 +54,8 @@ const SCENARIOS = JSON.parse(
 const FORGED = testdata("golden_forged.json");
 
 /** Documents of five images under one forged root, written once, so their keys and the root's
- * hash are the same in every run and in both languages. */
-/** A forged root whose three certificates have positive serials, as RFC 5280 requires and Python's
- * cryptography will insist: certs.ts draws eight random bytes, which half the time read negative. */
+ * hash are the same in every run. */
+/** A forged root whose three certificates have positive serials, as RFC 5280 requires: certs.ts draws eight random bytes, which half the time read negative. */
 async function positiveForge(now: number) {
 	for (;;) {
 		const forge = await forgeNitro(new Date(now));
@@ -179,7 +177,7 @@ function worldOf(s: Scenario["world"]): World {
 }
 
 /** The output with the temporary directories' random names written as XXXXXX. Node's mkdtemp
- * and the Python port's both add six letters or digits, so lines wrap the same. */
+ * adds six letters or digits. */
 const normalized = (out: string) =>
 	out.replace(/(trymorse-verify-|\/\d+-)[A-Za-z0-9]{6}/g, "$1XXXXXX");
 

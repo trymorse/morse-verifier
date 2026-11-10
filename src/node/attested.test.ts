@@ -435,7 +435,6 @@ describe("what attested() won't send", () => {
 		);
 	});
 
-	// The Python client's tests read the same table, so the two can't drift on what goes out.
 	it("sends plain, seals, or refuses each URL of request_urls.json as the table says", async () => {
 		const table = JSON.parse(
 			readFileSync(

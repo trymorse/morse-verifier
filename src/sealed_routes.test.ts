@@ -1,14 +1,8 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
-import { MAX_KEYS, SEALED_CONTENT_TYPE } from "./seal.ts";
 import {
-	CONTENT_HEADERS,
-	DROPPED_HEADERS,
 	droppedHeader,
-	NULL_BODY_STATUSES,
-	PLAIN_PATTERNS,
 	plainRoute,
-	RELAY_REPLY_HEADERS,
 	SEALED_PATTERNS,
 	sealsRoute,
 } from "./sealed_routes.ts";
@@ -48,28 +42,6 @@ it.each([
 		false,
 		false,
 	]);
-});
-
-// The Python package's routes.py holds these same lists, and its tests compare them with this file,
-// which UPDATE_GOLDEN=1 writes.
-it("writes the protocol's lists to protocol.json, which the Python package holds itself to", () => {
-	const file = new URL("./testdata/protocol.json", import.meta.url);
-	const protocol = `${JSON.stringify(
-		{
-			sealed_content_type: SEALED_CONTENT_TYPE,
-			max_keys: MAX_KEYS,
-			sealed_patterns: SEALED_PATTERNS,
-			plain_patterns: PLAIN_PATTERNS,
-			content_headers: [...CONTENT_HEADERS.values()],
-			dropped_headers: DROPPED_HEADERS,
-			relay_reply_headers: RELAY_REPLY_HEADERS,
-			null_body_statuses: [...NULL_BODY_STATUSES],
-		},
-		null,
-		2,
-	)}\n`;
-	if (process.env.UPDATE_GOLDEN === "1") writeFileSync(file, protocol);
-	expect(readFileSync(file, "utf8")).toBe(protocol);
 });
 
 it.each([

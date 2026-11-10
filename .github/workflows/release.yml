@@ -1,5 +1,5 @@
-# Publishes @askmorse/verify to npm and trymorse-verify to PyPI from each v* tag, through trusted
-# publishing with no stored token. Each job runs only once its NPM_PUBLISH or PYPI_PUBLISH variable is true.
+# Publishes @askmorse/verify to npm from each v* tag, through trusted publishing with no stored
+# token. It runs only once the NPM_PUBLISH variable is true.
 
 name: release
 
@@ -65,58 +65,3 @@ jobs:
           npx --no -- trymorse-verify --help
       - if: steps.new.outputs.publish == 'true'
         run: npm publish --ignore-scripts
-
-  pypi:
-    if: ${{ vars.PYPI_PUBLISH == 'true' }}
-    runs-on: ubuntu-24.04
-    environment: pypi
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - id: new
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          [[ $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$TAG is not a vYYYY.M.N release"; exit 1; }
-          publish=true
-          for other in $(git tag --points-at HEAD | grep -vxF "$TAG" || true); do
-            [[ $other =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
-            if curl -sfo /dev/null "https://pypi.org/pypi/trymorse-verify/${other#v}/json"; then
-              echo "::notice::PyPI has this commit as ${other#v}, from $other; $TAG publishes nothing"
-              publish=false
-              break
-            fi
-          done
-          echo "publish=$publish" >>"$GITHUB_OUTPUT"
-      - if: steps.new.outputs.publish == 'true'
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-        with:
-          version: 0.13.7
-          python-version: "3.12"
-          enable-cache: false
-      - if: steps.new.outputs.publish == 'true'
-        working-directory: python
-        run: uv run --locked pytest
-      - name: Set the version from the tag, and build
-        if: steps.new.outputs.publish == 'true'
-        working-directory: python
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          uv version --frozen "${TAG#v}"
-          uv build --out-dir ../dist
-      - name: Install the wheel and run its CLI
-        if: steps.new.outputs.publish == 'true'
-        run: |
-          uvx --no-cache --from "$(ls dist/trymorse_verify-*.whl)" trymorse-verify --version
-          uvx --no-cache --from "$(ls dist/trymorse_verify-*.whl)" trymorse-verify --help
-      - if: steps.new.outputs.publish == 'true'
-        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
-        with:
-          packages-dir: dist/
-          attestations: true
