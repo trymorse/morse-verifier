@@ -336,7 +336,7 @@ export async function verify(options: VerifyOptions = {}): Promise<Report> {
 		if (!list)
 			throw new Failed(
 				"Allowed",
-				`Morse's signed list ${files.tag} ${listError}`,
+				`Morse's signed list ${files.name} ${listError}`,
 			);
 		for (const c of checked) if (!c.doc) throw new Failed(c.label, c.reason);
 
@@ -377,12 +377,13 @@ export async function verify(options: VerifyOptions = {}): Promise<Report> {
 		for (const [i, image] of images.entries()) {
 			if (several) emit(`Image ${i + 1}`, "info", pcrLines(image.pcrs));
 
-			// 2. Allowed: Morse's CI signed a list of the prod images Morse allows, Rekor logged it in
-			// the last 7 days, and it lists these PCRs, unrevoked. Its signer is Morse.
+			// 2. Allowed: the public sign.yml of trymorse/morse-pins signed a list of the prod images
+			// Morse allows in the last 7 days, Rekor v2 logged it, at least 3 witnesses cosigned the
+			// log's checkpoint, and it lists these PCRs, unrevoked. Its signer is Morse.
 			emit("Allowed", "passed", [
 				"on Morse's signed list of prod images, not revoked",
-				`list ${list.sequence}, logged ${ago(at - list.integratedTime)} at Rekor entry ${list.logIndex}`,
-				`https://search.sigstore.dev/?logIndex=${list.logIndex}`,
+				`list ${list.sequence}, signed ${ago(at - list.signedAt)}, Rekor v2 entry ${list.logIndex}, ${list.witnesses} witnesses`,
+				"https://github.com/trymorse/morse-pins/tree/statements/images/prod",
 			]);
 
 			// 3. Source: a commit on main of the public repository names these PCRs as the release it

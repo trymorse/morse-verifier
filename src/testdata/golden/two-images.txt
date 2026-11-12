@@ -1,26 +1,26 @@
 @askmorse/verify 0.0.0
 Checking the enclaves api.trymorse.ai lists
 
-Attestation  2 enclaves, each signed by AWS Nitro (root 9dc714fd…ff98a558)
+Attestation  2 enclaves, each signed by AWS Nitro (root 0f8594e4…09f45c0c)
              key 648aa5c579fb30f3, signed 1 min ago, image 1
              key 9f4fb68f3e1dac82, signed 2 min ago, image 2
-Image 1      PCR0 4fccf46baafd…ef6e1606
+Image 1      PCR0 75b4ee3b4897…d0619cbf
              PCR1 3b4a7e1b5f13…a0974d03
-             PCR2 de079dd37c0b…1c4d4f35
+             PCR2 7a04e791a60c…645dee72
 Allowed      on Morse's signed list of prod images, not revoked
-             list 290, logged 48 min ago at Rekor entry 3714441255
-             https://search.sigstore.dev/?logIndex=3714441255
-Source       v2026.11.4-pins-23c1570, commit 696ab5a852e0 on main of
+             list 288, signed 7 h ago, Rekor v2 entry 194111814, 4 witnesses
+             https://github.com/trymorse/morse-pins/tree/statements/images/prod
+Source       v2026.11.15, commit e6cdc4229582 on main of
              github.com/trymorse/morse-enclave, names these PCRs
 Rebuild      not run. These PCRs are the ones Morse's CI wrote in that commit.
              Run with --rebuild to build it here and compare (Docker, ~2 min).
-Image 2      PCR0 9a944be51af5…76dbfa12
+Image 2      PCR0 77aeea35ce8c…c5890789
              PCR1 3b4a7e1b5f13…a0974d03
-             PCR2 f7282b9542ed…df84f1c1
+             PCR2 8da9f9a00daf…3e265b48
 Allowed      on Morse's signed list of prod images, not revoked
-             list 290, logged 48 min ago at Rekor entry 3714441255
-             https://search.sigstore.dev/?logIndex=3714441255
-Source       v2026.11.4-pins-86774b6, commit 78f8ef8f9d0e on main of
+             list 288, signed 7 h ago, Rekor v2 entry 194111814, 4 witnesses
+             https://github.com/trymorse/morse-pins/tree/statements/images/prod
+Source       v2026.11.14-pins-a6556e9, commit 2e667dcb138a on main of
              github.com/trymorse/morse-enclave, names these PCRs
 Rebuild      not run. These PCRs are the ones Morse's CI wrote in that commit.
              Run with --rebuild to build it here and compare (Docker, ~2 min).
@@ -28,6 +28,6 @@ TLS          api.trymorse.ai's TLS key 7589dd8f4f792416 (issuer Amazon RSA 2048
              M04) is in no attestation document, so TLS ends before the enclave.
              Morse's relay can read requests on it unless they're sealed.
 
-Passed. The enclaves api.trymorse.ai lists run v2026.11.4-pins-23c1570 and
-v2026.11.4-pins-86774b6 of github.com/trymorse/morse-enclave, as published (not
+Passed. The enclaves api.trymorse.ai lists run v2026.11.15 and
+v2026.11.14-pins-a6556e9 of github.com/trymorse/morse-enclave, as published (not
 rebuilt here).

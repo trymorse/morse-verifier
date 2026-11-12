@@ -21,6 +21,8 @@ export const SEALED_PATTERNS = [
 	"POST /v1/plugins/call",
 	"POST /v1/plugins/token",
 	"POST /v1/plugins/revoke",
+	"POST /v1/tasks",
+	"POST /v1/tasks/{id}/bundle",
 ] as const;
 
 /** The routes the relay answers alone, which carry no content: there is nothing in them to seal. */

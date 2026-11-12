@@ -1,7 +1,7 @@
 @askmorse/verify 0.0.0
 Checking the enclaves api.trymorse.ai lists
 
-Attestation  FAILED: enclave i-0d45a659f78879f74-enc01a1aff4a42aa553: the
+Attestation  FAILED: enclave i-015c22f85232d8af3-enc01a1ca0de87771e5: the
              document's signature does not verify
 
 Failed at Attestation. Don't send anything to these enclaves.

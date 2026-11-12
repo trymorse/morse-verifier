@@ -1,6 +1,6 @@
 {
-  "about": "The scenarios the CLI's printed output is pinned for, by src/node/golden.test.ts, each against golden/<name>.txt. A world changes one part of testing/world.ts's captures: attestation replies in order (instances: live0 and live1 are the capture's documents, -flipped changes a document's last byte, forged:<name> is a document of golden_forged.json under its root), the signed list (290, 290-changed, 280), the git log (drop the newest commits, or replace text), git or docker missing, docker's arch or a down daemon, what build.sh measures, the TLS key served, and the clock. Write the outputs with UPDATE_GOLDEN=1 npx vitest run packages/verifier/src/node/golden.test.ts.",
-  "now": "2026-11-06T10:40:00Z",
+  "about": "The scenarios the CLI's printed output is pinned for, by src/node/golden.test.ts, each against golden/<name>.txt. A world changes one part of testing/world.ts's captures: attestation replies in order (instances: live0 and live1 are the capture's documents, -flipped changes a document's last byte, forged:<name> is a document of golden_forged.json under its root), the signed list (288-changed, or 254, which predates the live image), the git log (drop the newest commits, or replace text), git or docker missing, docker's arch or a down daemon, what build.sh measures, the TLS key served, and the clock. Write the outputs with UPDATE_GOLDEN=1 npx vitest run packages/verifier/src/node/golden.test.ts.",
+  "now": "2026-11-11T21:05:00Z",
   "tmpdir": "/tmp",
   "scenarios": [
     {
@@ -26,14 +26,14 @@
       "name": "attestation-too-old",
       "argv": [],
       "world": {
-        "now": "2026-11-06T11:03:30Z"
+        "now": "2026-11-11T21:24:00Z"
       }
     },
     {
       "name": "attestation-ahead",
       "argv": [],
       "world": {
-        "now": "2026-11-06T10:27:30Z"
+        "now": "2026-11-11T20:55:00Z"
       }
     },
     {
@@ -141,14 +141,14 @@
       "name": "allowed-statement-changed",
       "argv": [],
       "world": {
-        "list": "290-changed"
+        "list": "288-changed"
       }
     },
     {
       "name": "allowed-unlisted",
       "argv": [],
       "world": {
-        "list": "280"
+        "list": "254"
       }
     },
     {
@@ -187,7 +187,7 @@
       "world": {
         "log": {
           "replace": [
-            "v2026.11.4-pins-23c1570",
+            "v2026.11.15",
             "v2026.11.4\u001b[1A\u001b[2KPassed.\u001b[8m\u202e"
           ]
         }
@@ -197,7 +197,7 @@
       "name": "release-by-name",
       "argv": [
         "--release",
-        "v2026.11.4-pins-23c1570"
+        "v2026.11.15"
       ],
       "world": {}
     },
@@ -205,7 +205,7 @@
       "name": "release-by-commit",
       "argv": [
         "--release",
-        "696ab5a852e09f3ab11e49156f3892e02796db5a"
+        "e6cdc422958266cedd937171bc7a3ba35618b225"
       ],
       "world": {}
     },
@@ -213,7 +213,7 @@
       "name": "release-other",
       "argv": [
         "--release",
-        "v2026.11.4-pins-86774b6"
+        "v2026.11.14-pins-a6556e9"
       ],
       "world": {}
     },
@@ -229,7 +229,7 @@
       "name": "release-subject-is-not-a-commit",
       "argv": [
         "--release",
-        "696ab5a852e0"
+        "e6cdc4229582"
       ],
       "world": {}
     },
@@ -252,7 +252,7 @@
       "name": "two-images-release",
       "argv": [
         "--release",
-        "v2026.11.4-pins-23c1570"
+        "v2026.11.15"
       ],
       "world": {
         "root": "forged",
@@ -278,7 +278,7 @@
       "argv": [
         "--rebuild",
         "--release",
-        "696ab5a852e09f3ab11e49156f3892e02796db5a"
+        "e6cdc422958266cedd937171bc7a3ba35618b225"
       ],
       "world": {}
     },
@@ -289,7 +289,7 @@
       ],
       "world": {
         "build": {
-          "pcr0": "4fccf46baafdf7362402ef287d332e49db794e98d0a6fff6337c05915835160cd9b619c47d063d7b19e9e03eef6e1606",
+          "pcr0": "75b4ee3b48971c27c2e00b9466a1d7e36b8db72d119c8e4cd0c95840b9b9c07cca87bf7e4ab27cff2c796fedd0619cbf",
           "pcr1": "3b4a7e1b5f13c5a1000b3ed32ef8995ee13e9876329f9bc72650b918329ef9cf4e2e4d1e1e37375dab0ba56ba0974d03",
           "pcr2": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
         }
@@ -328,7 +328,7 @@
       "argv": [],
       "world": {
         "tls": {
-          "spkiSha256": "b0474adfce42421fb12c43ebee26901a97ebbf11f32d4a225ffa5767c534b679",
+          "spkiSha256": "9ca2e4167101e6282d70320e4e72981afbc950d98e15389faf2540e77dca4ea1",
           "issuer": "i-0d45a659f78879f74"
         }
       }

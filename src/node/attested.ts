@@ -174,7 +174,7 @@ export function sealedFetch(origin: string, reach: Reach): Fetch {
 		} catch (e) {
 			throw new VerifyError(
 				"Allowed",
-				`Morse's signed list ${files.tag} ${(e as Error).message}`,
+				`Morse's signed list ${files.name} ${(e as Error).message}`,
 				false,
 			);
 		}

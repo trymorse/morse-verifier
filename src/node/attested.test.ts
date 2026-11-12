@@ -17,14 +17,13 @@ import { type RelayOptions, startRelay } from "../testing/relay.ts";
 import {
 	fake,
 	LIVE,
-	LOG,
+	LOG_WITHOUT_UNPUBLISHED,
 	NOW,
-	STATEMENT,
+	UNPUBLISHED,
 	type World,
 } from "../testing/world.ts";
 import { attested, sealedFetch, VerifyError } from "./attested.ts";
 import type { Exec } from "./io.ts";
-import { parseLog, samePcrs } from "./source.ts";
 
 const MINUTE = 60_000;
 /** The headers the OpenAI SDK sends with each request, from openai 7.53's client.mjs. */
@@ -53,14 +52,6 @@ const UNLISTED: Pcrs = {
 	pcr1: "ab".repeat(48),
 	pcr2: "ab".repeat(48),
 };
-/** An image on list 290 that no commit on main names. */
-const UNPUBLISHED = (
-	JSON.parse(STATEMENT.toString()) as {
-		images: (Pcrs & { revoked: boolean })[];
-	}
-).images.find(
-	(i) => !i.revoked && !parseLog(LOG).some((r) => samePcrs(r.pcrs, i)),
-) as Pcrs;
 
 let forge: Awaited<ReturnType<typeof forgeNitro>>;
 beforeAll(async () => {
@@ -492,6 +483,7 @@ describe("the keys it seals to", () => {
 			enclave(),
 		];
 		const s = await setup({
+			world: { log: LOG_WITHOUT_UNPUBLISHED },
 			live: [good, alsoUnlisted, alsoStale, forged, unpublished],
 			listed: async () => [
 				await good.document(),
@@ -552,7 +544,7 @@ describe("the keys it seals to", () => {
 				await slow.document({ timestamp: clock - 29 * MINUTE }),
 			],
 			github: (url) => {
-				if (url.endsWith("prod.statement.json")) clock += 2 * MINUTE;
+				if (url.endsWith(".statement.json")) clock += 2 * MINUTE;
 			},
 		});
 		const e = await failure(s.send(`${s.at}/v1/chat/completions`, chat));
@@ -686,7 +678,7 @@ describe("the keys it seals to", () => {
 	it("are fetched once for concurrent calls, and again, with the signed list, once the oldest is 30 minutes old", async () => {
 		const s = await setup();
 		const statements = () =>
-			s.world.fetched.filter((u) => u.endsWith("prod.statement.json")).length;
+			s.world.fetched.filter((u) => u.endsWith(".statement.json")).length;
 		const clones = () => s.world.ran.filter((c) => c[1] === "clone").length;
 		await Promise.all([
 			s.send(`${s.at}/v1/chat/completions`, chat),

@@ -35,11 +35,26 @@ export interface SealKey {
 	readonly keyId: Bytes;
 }
 
+/** A JSON value as the head carries it. */
+type HeadJson =
+	| boolean
+	| number
+	| string
+	| null
+	| readonly HeadJson[]
+	| { readonly [key: string]: HeadJson };
+
 export interface InnerHead {
 	readonly method: string;
 	readonly path: string;
 	readonly headers: Readonly<Record<string, string>>;
 	readonly ts: number;
+	/** A chat's ask for the Privacy Veil, `true` or an object, carried inside the seal so the relay
+	 * can't drop it. A proxy from before the Veil refuses a head that has it. Left out when unset. */
+	readonly privacy_veil?: HeadJson;
+	/** The chat's cache partition for the Veil: at least 16 random bytes in unpadded base64url,
+	 * the same for every call of one chat. Left out when unset or empty. */
+	readonly privacy_veil_partition?: string;
 }
 
 export interface Draws {
@@ -166,6 +181,9 @@ const GO_ESCAPES: Record<string, string> = {
 	"\u2029": "\\u2029",
 };
 
+/** The head as Go's encoding/json writes the backend's `seal.Head`: its fields in the struct's
+ * order, the headers by name, the Veil's two only when set, and `<`, `>`, `&`, U+2028, and U+2029
+ * escaped, inside the ask's JSON too, which Go compacts as this does. */
 export function headJson(head: InnerHead, bodyLength: number): Bytes {
 	const headers = Object.fromEntries(
 		Object.keys(head.headers)
@@ -178,6 +196,12 @@ export function headJson(head: InnerHead, bodyLength: number): Bytes {
 			path: head.path,
 			headers,
 			ts: head.ts,
+			...(head.privacy_veil !== undefined && {
+				privacy_veil: head.privacy_veil,
+			}),
+			...(head.privacy_veil_partition && {
+				privacy_veil_partition: head.privacy_veil_partition,
+			}),
 			body_len: bodyLength,
 		}).replace(/[<>&\u2028\u2029]/g, (c) => GO_ESCAPES[c]),
 	);

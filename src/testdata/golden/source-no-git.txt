@@ -2,14 +2,14 @@
 Checking the enclaves api.trymorse.ai lists
 
 Attestation  2 enclaves, each signed by AWS Nitro (root 641a0321…8f79bb5b)
-             key 8f6198f0b59e34cf, signed 6 min ago
-             key 0032c6519a4b546d, signed 8 min ago
-             PCR0 4fccf46baafd…ef6e1606
+             key b7b56034a2a03576, signed 4 min ago
+             key f6bad5f9a3f183f6, signed 13 min ago
+             PCR0 75b4ee3b4897…d0619cbf
              PCR1 3b4a7e1b5f13…a0974d03
-             PCR2 de079dd37c0b…1c4d4f35
+             PCR2 7a04e791a60c…645dee72
 Allowed      on Morse's signed list of prod images, not revoked
-             list 290, logged 48 min ago at Rekor entry 3714441255
-             https://search.sigstore.dev/?logIndex=3714441255
+             list 288, signed 7 h ago, Rekor v2 entry 194111814, 4 witnesses
+             https://github.com/trymorse/morse-pins/tree/statements/images/prod
 
 Could not finish: the Source check runs git, which isn't on this machine's PATH.
 Install git (https://git-scm.com) and run again. Nothing was checked past

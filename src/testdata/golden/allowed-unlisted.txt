@@ -1,7 +1,7 @@
 @askmorse/verify 0.0.0
 Checking the enclaves api.trymorse.ai lists
 
-Allowed      FAILED: enclave i-0d45a659f78879f74-enc01a1aff4a42aa553 runs PCR0
-             4fccf46baafd…ef6e1606, which is not on Morse's signed list
+Allowed      FAILED: enclave i-015c22f85232d8af3-enc01a1ca0de87771e5 runs PCR0
+             75b4ee3b4897…d0619cbf, which is not on Morse's signed list
 
 Failed at Allowed. Don't send anything to these enclaves.

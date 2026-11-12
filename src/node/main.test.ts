@@ -24,21 +24,21 @@ async function run(
 	return { code, out, err };
 }
 
-// What `npx @askmorse/verify` printed for api.trymorse.ai on 2026-11-06 at 10:40 UTC, from the
+// What `npx @askmorse/verify` printed for api.trymorse.ai on 2026-11-11 at 21:05 UTC, from the
 // captures in testdata. The verify page shows these lines.
 const PASSED = `@askmorse/verify 0.0.0
 Checking the enclaves api.trymorse.ai lists
 
 Attestation  2 enclaves, each signed by AWS Nitro (root 641a0321…8f79bb5b)
-             key 8f6198f0b59e34cf, signed 6 min ago
-             key 0032c6519a4b546d, signed 8 min ago
-             PCR0 4fccf46baafd…ef6e1606
+             key b7b56034a2a03576, signed 4 min ago
+             key f6bad5f9a3f183f6, signed 13 min ago
+             PCR0 75b4ee3b4897…d0619cbf
              PCR1 3b4a7e1b5f13…a0974d03
-             PCR2 de079dd37c0b…1c4d4f35
+             PCR2 7a04e791a60c…645dee72
 Allowed      on Morse's signed list of prod images, not revoked
-             list 290, logged 48 min ago at Rekor entry 3714441255
-             https://search.sigstore.dev/?logIndex=3714441255
-Source       v2026.11.4-pins-23c1570, commit 696ab5a852e0 on main of
+             list 288, signed 7 h ago, Rekor v2 entry 194111814, 4 witnesses
+             https://github.com/trymorse/morse-pins/tree/statements/images/prod
+Source       v2026.11.15, commit e6cdc4229582 on main of
              github.com/trymorse/morse-enclave, names these PCRs
 Rebuild      not run. These PCRs are the ones Morse's CI wrote in that commit.
              Run with --rebuild to build it here and compare (Docker, ~2 min).
@@ -46,9 +46,9 @@ TLS          api.trymorse.ai's TLS key 7589dd8f4f792416 (issuer Amazon RSA 2048
              M04) is in no attestation document, so TLS ends before the enclave.
              Morse's relay can read requests on it unless they're sealed.
 
-Passed. The enclaves api.trymorse.ai lists run v2026.11.4-pins-23c1570 of
+Passed. The enclaves api.trymorse.ai lists run v2026.11.15 of
 github.com/trymorse/morse-enclave, as published (not rebuilt here).
-Pin this release in CI: --release 696ab5a852e09f3ab11e49156f3892e02796db5a
+Pin this release in CI: --release e6cdc422958266cedd937171bc7a3ba35618b225
 `;
 
 describe("npx @askmorse/verify", () => {
@@ -60,11 +60,7 @@ describe("npx @askmorse/verify", () => {
 	});
 
 	it("keeps every line to 80 characters, and prints no middle dot and none of four claims it can't back", async () => {
-		for (const argv of [
-			[],
-			["--rebuild"],
-			["--release", "v2026.11.4-pins-23c1570"],
-		]) {
+		for (const argv of [[], ["--rebuild"], ["--release", "v2026.11.15"]]) {
 			const { out } = await run(argv);
 			for (const line of out.split("\n"))
 				expect(line.length, line).toBeLessThanOrEqual(80);
@@ -101,7 +97,7 @@ Failed at Attestation. Don't send anything to these enclaves.
 			build: { ...LIVE, pcr2: "0".repeat(96) },
 		});
 		expect(out).toContain(
-			"\nRebuild      FAILED: commit 696ab5a852e0 rebuilds here to other PCRs than the\n",
+			"\nRebuild      FAILED: commit e6cdc4229582 rebuilds here to other PCRs than the\n",
 		);
 		expect(code).toBe(1);
 	});
@@ -141,7 +137,7 @@ was checked.
 		);
 
 		const named = await run([], {
-			log: LOG.replace("v2026.11.4-pins-23c1570", `v2026.11.4${hide}\u202e`),
+			log: LOG.replace("v2026.11.15", `v2026.11.4${hide}\u202e`),
 		});
 		expect(named.code).toBe(0);
 		for (const c of ["\x1b", "\u202e"]) expect(named.out).not.toContain(c);

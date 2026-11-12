@@ -34,6 +34,8 @@ const vectors = JSON.parse(
 			path: string;
 			headers: Record<string, string>;
 			ts: number;
+			privacy_veil?: { report?: boolean } | boolean;
+			privacy_veil_partition?: string;
 			body_len: number;
 		};
 		head_json: string;
@@ -105,6 +107,50 @@ describe.each(vectors.requests)("the request vector $name", (v) => {
 		expect(hex(sealed)).toBe(v.sealed);
 		expect(hex(cek)).toBe(v.cek);
 		expect(sealed.length % 1024).toBe((2 + 88 * keys.length) % 1024);
+	});
+});
+
+describe("the head's Privacy Veil fields", () => {
+	const head = {
+		method: "POST",
+		path: "/v1/chat/completions",
+		headers: { "Content-Type": "application/json" },
+		ts: 1792216730,
+	};
+	const text = (bytes: Bytes) => new TextDecoder().decode(bytes);
+
+	it("go between ts and body_len, the ask first, as Go's struct orders them", () => {
+		expect(
+			text(
+				headJson(
+					{
+						...head,
+						privacy_veil: { report: true },
+						privacy_veil_partition: "BwcHBwcHBwcHBwcHBwcHBw",
+					},
+					2,
+				),
+			),
+		).toBe(
+			'{"method":"POST","path":"/v1/chat/completions","headers":{"Content-Type":"application/json"},"ts":1792216730,"privacy_veil":{"report":true},"privacy_veil_partition":"BwcHBwcHBwcHBwcHBwcHBw","body_len":2}',
+		);
+	});
+
+	it("are left out unset, and the partition empty, so a head without them is the bytes it was", () => {
+		const bare = text(headJson(head, 2));
+		expect(text(headJson({ ...head, privacy_veil_partition: "" }, 2))).toBe(
+			bare,
+		);
+		expect(bare).not.toContain("privacy_veil");
+		expect(text(headJson({ ...head, privacy_veil: true }, 2))).toContain(
+			'"ts":1792216730,"privacy_veil":true,"body_len":2}',
+		);
+	});
+
+	it("escape the ask's <, >, and & as Go does inside a raw message", () => {
+		expect(
+			text(headJson({ ...head, privacy_veil: { tool: "a<b>&c" } }, 0)),
+		).toContain('"privacy_veil":{"tool":"a\\u003cb\\u003e\\u0026c"}');
 	});
 });
 

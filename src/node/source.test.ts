@@ -11,13 +11,13 @@ const message = (name: string, rootfs = true) =>
 describe("parseLog", () => {
 	it("reads every release on morse-enclave's main, newest first", () => {
 		const releases = parseLog(LOG);
-		expect(releases).toHaveLength(32);
+		expect(releases).toHaveLength(60);
 		expect(releases[0]).toEqual({
-			name: "v2026.11.4-pins-23c1570",
+			name: "v2026.11.15",
 			commit: LIVE_COMMIT,
 			pcrs: LIVE,
 			rootfs:
-				"7ca659b21f66d3875cddbc4f884d6aa72417813b75fdcbd7c6b7d2a47659e99a",
+				"e6861e0baa7bc961123d7d9e44360e834cc40c36cd30629db501f034df26ea92",
 		});
 		expect(releases.at(-1)?.name).toBe("v2026.10.2");
 	});
@@ -51,12 +51,8 @@ describe("parseLog", () => {
 describe("findRelease", () => {
 	const releases = parseLog(LOG);
 	it("finds a release by its name or its commit", () => {
-		expect(findRelease(releases, "v2026.11.4-pins-23c1570")?.commit).toBe(
-			LIVE_COMMIT,
-		);
-		expect(findRelease(releases, LIVE_COMMIT)?.name).toBe(
-			"v2026.11.4-pins-23c1570",
-		);
+		expect(findRelease(releases, "v2026.11.15")?.commit).toBe(LIVE_COMMIT);
+		expect(findRelease(releases, LIVE_COMMIT)?.name).toBe("v2026.11.15");
 		expect(findRelease(releases, LIVE_COMMIT.slice(0, 12))).toBeUndefined();
 		expect(findRelease(releases, "v1.8.2")).toBeUndefined();
 	});
@@ -74,7 +70,7 @@ describe("findRelease", () => {
 			commit: commit("e"),
 		});
 		expect(findRelease(shadowed, LIVE_COMMIT)).toMatchObject({
-			name: "v2026.11.4-pins-23c1570",
+			name: "v2026.11.15",
 			commit: LIVE_COMMIT,
 			pcrs: LIVE,
 		});

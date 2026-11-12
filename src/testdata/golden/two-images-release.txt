@@ -1,21 +1,21 @@
 @askmorse/verify 0.0.0
 Checking the enclaves api.trymorse.ai lists
 
-Attestation  2 enclaves, each signed by AWS Nitro (root 9dc714fd…ff98a558)
+Attestation  2 enclaves, each signed by AWS Nitro (root 0f8594e4…09f45c0c)
              key 648aa5c579fb30f3, signed 1 min ago, image 1
              key 9f4fb68f3e1dac82, signed 2 min ago, image 2
-Image 1      PCR0 4fccf46baafd…ef6e1606
+Image 1      PCR0 75b4ee3b4897…d0619cbf
              PCR1 3b4a7e1b5f13…a0974d03
-             PCR2 de079dd37c0b…1c4d4f35
+             PCR2 7a04e791a60c…645dee72
 Allowed      on Morse's signed list of prod images, not revoked
-             list 290, logged 48 min ago at Rekor entry 3714441255
-             https://search.sigstore.dev/?logIndex=3714441255
-Source       v2026.11.4-pins-23c1570, commit 696ab5a852e0 on main of
+             list 288, signed 7 h ago, Rekor v2 entry 194111814, 4 witnesses
+             https://github.com/trymorse/morse-pins/tree/statements/images/prod
+Source       v2026.11.15, commit e6cdc4229582 on main of
              github.com/trymorse/morse-enclave, names these PCRs
-Release      FAILED: --release names v2026.11.4-pins-23c1570, commit
-             696ab5a852e0, but not every enclave runs it:
-             key 648aa5c579fb30f3 runs v2026.11.4-pins-23c1570
-             key 9f4fb68f3e1dac82 runs v2026.11.4-pins-86774b6
+Release      FAILED: --release names v2026.11.15, commit e6cdc4229582, but not
+             every enclave runs it:
+             key 648aa5c579fb30f3 runs v2026.11.15
+             key 9f4fb68f3e1dac82 runs v2026.11.14-pins-a6556e9
              A deploy replaces one enclave at a time, so for a few minutes after
              one the enclaves run two releases. Run again.
 

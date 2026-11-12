@@ -1,7 +1,7 @@
 @askmorse/verify 0.0.0
 Checking the enclaves api.trymorse.ai lists
 
-Allowed      FAILED: Morse's signed list signed-290-20261106T095152Z names a
+Allowed      FAILED: Morse's signed list prod/288-20261111T143126Z names a
              digest other than the statement's SHA-256
 
 Failed at Allowed. Don't send anything to these enclaves.

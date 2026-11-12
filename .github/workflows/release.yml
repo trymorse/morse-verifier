@@ -1,5 +1,6 @@
 # Publishes @askmorse/verify to npm from each v* tag, through trusted publishing with no stored
 # token. It runs only once the NPM_PUBLISH variable is true.
+# The github-release job then creates the tag's GitHub Release, saying what changed.
 
 name: release
 
@@ -21,6 +22,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    outputs:
+      published: ${{ steps.published.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -65,3 +68,33 @@ jobs:
           npx --no -- trymorse-verify --help
       - if: steps.new.outputs.publish == 'true'
         run: npm publish --ignore-scripts
+      - id: published
+        if: steps.new.outputs.publish == 'true'
+        env:
+          TAG: ${{ github.ref_name }}
+        run: echo "version=${TAG#v}" >>"$GITHUB_OUTPUT"
+
+  # One GitHub Release per tag, after npm has the version it names. A tag whose npm job is off or
+  # publishes nothing still gets its Release, and a rerun leaves an existing Release alone.
+  github-release:
+    needs: [npm]
+    if: ${{ !cancelled() && needs.npm.result != 'failure' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          NPM_VERSION: ${{ needs.npm.outputs.published }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::notice::$TAG already has a Release"
+            exit 0
+          fi
+          .github/scripts/release-notes.sh "$TAG" ${NPM_VERSION:+"$NPM_VERSION"} >"$RUNNER_TEMP/notes.md"
+          gh release create "$TAG" --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"

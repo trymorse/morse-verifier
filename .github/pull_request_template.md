@@ -1,0 +1,1 @@
+This repository is exported from Morse's private monorepo, so pull requests here are not merged. Please open an issue describing the change instead, and we'll make it upstream. For a security problem, follow [SECURITY.md](https://github.com/trymorse/morse-verifier/blob/main/SECURITY.md) and don't open anything public.

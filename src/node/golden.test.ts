@@ -9,6 +9,8 @@ import type { Pcrs } from "../pins.ts";
 import { forgeNitro } from "../testing/forge.ts";
 import {
 	fake,
+	LIST,
+	LIST_254,
 	LIVE,
 	LOG,
 	liveInstances,
@@ -39,7 +41,7 @@ interface Scenario {
 		now?: string;
 		root?: "forged";
 		attestation?: ReplySpec[];
-		list?: "290" | "290-changed" | "280";
+		list?: "288-changed" | "254";
 		log?: { drop?: number; replace?: [string, string] };
 		git?: "missing";
 		docker?: string;
@@ -147,21 +149,17 @@ const response = (r: ReplySpec) => () =>
 
 function worldOf(s: Scenario["world"]): World {
 	const statement = Uint8Array.from(STATEMENT);
-	if (s.list === "290-changed") statement[statement.length - 3] ^= 1;
+	if (s.list === "288-changed") statement[statement.length - 3] ^= 1;
 	let log = LOG;
 	if (s.log?.drop) log = LOG.split("\0").slice(s.log.drop).join("\0");
 	if (s.log?.replace) log = LOG.replace(...s.log.replace);
 	return {
 		attestation: s.attestation?.map(response),
 		list:
-			s.list === "280"
-				? {
-						tag: "signed-280-20261106T080407Z",
-						statement: read("prod.statement.280.json"),
-						bundle: read("prod.sigstore.280.json"),
-					}
+			s.list === "254"
+				? LIST_254
 				: {
-						tag: "signed-290-20261106T095152Z",
+						name: LIST,
 						statement,
 						bundle: read("prod.sigstore.json"),
 					},
@@ -179,7 +177,10 @@ function worldOf(s: Scenario["world"]): World {
 /** The output with the temporary directories' random names written as XXXXXX. Node's mkdtemp
  * adds six letters or digits. */
 const normalized = (out: string) =>
-	out.replace(/(trymorse-verify-|\/\d+-)[A-Za-z0-9]{6}/g, "$1XXXXXX");
+	out.replace(
+		/(trymorse-verify-|\/\d+-)[A-Za-z0-9]{6}(?![A-Za-z0-9])/g,
+		"$1XXXXXX",
+	);
 
 describe("the CLI's output, held to testdata/golden", () => {
 	beforeAll(async () => {

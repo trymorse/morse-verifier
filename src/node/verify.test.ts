@@ -6,17 +6,24 @@ import { type Bytes, fromBase64, toBase64 } from "../bytes.ts";
 import type { Pcrs } from "../pins.ts";
 import { forgeNitro } from "../testing/forge.ts";
 import {
+	advertisement,
 	fake,
+	LIST,
+	LIST_254,
 	LIVE,
 	LIVE_COMMIT,
 	LOG,
+	LOG_WITHOUT_UNPUBLISHED,
 	liveInstances,
 	NOW,
+	REFS,
 	reply,
 	STATEMENT,
+	STATEMENTS_COMMIT,
+	UNPUBLISHED,
 	type World,
 } from "../testing/world.ts";
-import { parseLog, type Release, samePcrs } from "./source.ts";
+import { parseLog, type Release } from "./source.ts";
 import { type Report, verify } from "./verify.ts";
 
 const MINUTE = 60_000;
@@ -27,7 +34,7 @@ const check = (world: World = {}, o: Parameters<typeof verify>[0] = {}) =>
 /** The step a report stopped at, and the lines it printed there. */
 const last = (r: Report) => r.steps.at(-1);
 
-describe("verify(), on the captures from 2026-11-06", () => {
+describe("verify(), on the captures from 2026-11-11", () => {
 	it("passes every check, and pins the commit both enclaves run", async () => {
 		const r = await check();
 		expect(r.exitCode).toBe(0);
@@ -41,14 +48,19 @@ describe("verify(), on the captures from 2026-11-06", () => {
 		expect(r.images).toHaveLength(1);
 		expect(r.images[0]).toMatchObject({
 			pcrs: LIVE,
-			release: { name: "v2026.11.4-pins-23c1570", commit: LIVE_COMMIT },
+			release: { name: "v2026.11.15", commit: LIVE_COMMIT },
 			rebuilt: false,
 		});
 		expect(r.images[0].enclaves.map((e) => e.moduleId)).toEqual([
-			"i-0d45a659f78879f74-enc01a1aff4a42aa553",
-			"i-015c22f85232d8af3-enc01a1aff39c639a81",
+			"i-015c22f85232d8af3-enc01a1ca0de87771e5",
+			"i-0d45a659f78879f74-enc01a1ca0eee2be5d3",
 		]);
-		expect(r.list).toMatchObject({ sequence: 290, logIndex: "3714441255" });
+		expect(r.list).toMatchObject({
+			sequence: 288,
+			logIndex: "194111814",
+			signedAt: Date.parse("2026-11-11T14:31:53Z"),
+			witnesses: 4,
+		});
 	});
 
 	it("could not finish when it can't make its temporary directory", async () => {
@@ -66,14 +78,16 @@ describe("verify(), on the captures from 2026-11-06", () => {
 		}
 	});
 
-	it("reaches only the host, morse-pins' latest release, and git", async () => {
+	it("reaches only the host, morse-pins' statements branch, and git", async () => {
 		const world = fake();
 		await verify(world.options);
+		const raw = `https://raw.githubusercontent.com/trymorse/morse-pins/${STATEMENTS_COMMIT}`;
 		expect(world.fetched).toEqual([
 			"https://api.trymorse.ai/v1/attestation",
-			"https://github.com/trymorse/morse-pins/releases/latest",
-			"https://github.com/trymorse/morse-pins/releases/download/signed-290-20261106T095152Z/prod.statement.json",
-			"https://github.com/trymorse/morse-pins/releases/download/signed-290-20261106T095152Z/prod.sigstore.json",
+			REFS,
+			`${raw}/prod/index.json`,
+			`${raw}/${LIST}.statement.json`,
+			`${raw}/${LIST}.sigstore.json`,
 		]);
 		expect(world.ran.map((c) => c.slice(0, 3))).toEqual([
 			["git", "clone", "--quiet"],
@@ -93,7 +107,7 @@ describe("Attestation", () => {
 			label: "Attestation",
 			status: "failed",
 			lines: [
-				"FAILED: enclave i-0d45a659f78879f74-enc01a1aff4a42aa553: the document's signature does not verify",
+				"FAILED: enclave i-015c22f85232d8af3-enc01a1ca0de87771e5: the document's signature does not verify",
 			],
 		});
 		expect(r.verdict).toEqual([
@@ -104,12 +118,12 @@ describe("Attestation", () => {
 	it.each([
 		[
 			"31 minutes after the older one",
-			Date.parse("2026-11-06T11:03:30Z"),
+			Date.parse("2026-11-11T21:23:30Z"),
 			/31 minutes old/,
 		],
 		[
 			"6 minutes before the newer one",
-			Date.parse("2026-11-06T10:27:30Z"),
+			Date.parse("2026-11-11T20:55:00Z"),
 			/6 minutes ahead of this device's clock/,
 		],
 	])("fails the documents on a clock %s", async (_, at, reason) => {
@@ -181,60 +195,58 @@ describe("Allowed", () => {
 		const statement = Uint8Array.from(STATEMENT);
 		statement[statement.length - 3] ^= 1;
 		const r = await check({
+			list: { name: LIST, statement, bundle: read("prod.sigstore.json") },
+		});
+		expect(r.exitCode).toBe(1);
+		expect(last(r)?.lines).toEqual([
+			"FAILED: Morse's signed list prod/288-20261111T143126Z names a digest other than the statement's SHA-256",
+		]);
+	});
+
+	it("fails the list Morse's private signer signed, which it no longer trusts", async () => {
+		const r = await check({
 			list: {
-				tag: "signed-290-20261106T095152Z",
-				statement,
-				bundle: read("prod.sigstore.json"),
+				name: LIST,
+				statement: read("private.statement.290.json"),
+				bundle: read("private.sigstore.290.json"),
 			},
 		});
 		expect(r.exitCode).toBe(1);
 		expect(last(r)?.lines).toEqual([
-			"FAILED: Morse's signed list signed-290-20261106T095152Z names a digest other than the statement's SHA-256",
+			"FAILED: Morse's signed list prod/288-20261111T143126Z was signed as URI:https://github.com/Watermark-Labs/pins/.github/workflows/sign.yml@refs/heads/main, not Morse's pins workflow",
 		]);
 	});
 
-	it("fails an image the signed list does not name: list 280, signed before the live image was", async () => {
-		const r = await check({
-			list: {
-				tag: "signed-280-20261106T080407Z",
-				statement: read("prod.statement.280.json"),
-				bundle: read("prod.sigstore.280.json"),
-			},
-		});
+	it("fails an image the signed list does not name: list 254, signed before the live image was", async () => {
+		const r = await check({ list: LIST_254 });
 		expect(r.exitCode).toBe(1);
 		expect(last(r)).toEqual({
 			label: "Allowed",
 			status: "failed",
 			lines: [
-				"FAILED: enclave i-0d45a659f78879f74-enc01a1aff4a42aa553 runs PCR0 4fccf46baafd…ef6e1606, which is not on Morse's signed list",
+				"FAILED: enclave i-015c22f85232d8af3-enc01a1ca0de87771e5 runs PCR0 75b4ee3b4897…d0619cbf, which is not on Morse's signed list",
 			],
 		});
 	});
 
-	it("could not finish when GitHub's latest release of morse-pins is not a signed list", async () => {
+	it("could not finish when morse-pins advertises no statements branch", async () => {
 		const world = fake();
 		const r = await verify({
 			...world.options,
 			fetch: (async (url: string) =>
-				String(url).endsWith("/releases/latest")
-					? new Response(null, {
-							status: 302,
-							headers: {
-								location:
-									"https://github.com/trymorse/morse-pins/releases/tag/v1",
-							},
-						})
+				String(url) === REFS
+					? new Response(advertisement(STATEMENTS_COMMIT, "refs/heads/other"))
 					: world.options.fetch(url)) as typeof fetch,
 		});
 		expect(r.exitCode).toBe(2);
 		expect(r.verdict[0]).toMatch(
-			/^Could not finish: .*not a signed list\. Nothing was checked\.$/,
+			/^Could not finish: .*advertises no refs\/heads\/statements\/images, so no signed list\. Nothing was checked\.$/,
 		);
 	});
 });
 
 // AWS's root can't sign test documents, so these forge documents under a test root, with the PCRs
-// of images on list 290.
+// of images on list 288.
 describe("forged documents of other images", () => {
 	let forge: Awaited<ReturnType<typeof forgeNitro>>;
 	beforeAll(async () => {
@@ -270,7 +282,7 @@ describe("forged documents of other images", () => {
 		const r = await withDocs([revoked]);
 		expect(r.exitCode).toBe(1);
 		expect(last(r)?.lines).toEqual([
-			"FAILED: enclave i-0123-enc0123 runs PCR0 21534ac29424…a564b595, which is on Morse's signed list, but Morse revoked it",
+			"FAILED: enclave i-0123-enc0123 runs PCR0 044207f79a70…c5c342d8, which is on Morse's signed list, but Morse revoked it",
 		]);
 	});
 
@@ -307,10 +319,10 @@ describe("forged documents of other images", () => {
 			expect.stringMatching(/^key [0-9a-f]{16}, signed 2 min ago, image 2$/),
 		]);
 		expect(r.steps[7].lines[0]).toBe(
-			"v2026.11.4-pins-86774b6, commit 78f8ef8f9d0e on main of github.com/trymorse/morse-enclave, names these PCRs",
+			"v2026.11.14-pins-a6556e9, commit 2e667dcb138a on main of github.com/trymorse/morse-enclave, names these PCRs",
 		);
 		expect(r.verdict).toEqual([
-			"Passed. The enclaves api.trymorse.ai lists run v2026.11.4-pins-23c1570 and v2026.11.4-pins-86774b6 of github.com/trymorse/morse-enclave, as published (not rebuilt here).",
+			"Passed. The enclaves api.trymorse.ai lists run v2026.11.15 and v2026.11.14-pins-a6556e9 of github.com/trymorse/morse-enclave, as published (not rebuilt here).",
 		]);
 	});
 
@@ -318,7 +330,7 @@ describe("forged documents of other images", () => {
 		const shared = parseLog(LOG).find(
 			(r) => r.name === "v2026.11.3-pins-66a50eb",
 		) as Release;
-		const r = await withDocs([shared.pcrs]);
+		const r = await withDocs([shared.pcrs], { list: LIST_254 });
 		expect(r.exitCode).toBe(0);
 		expect(r.steps.find((s) => s.label === "Source")?.lines).toEqual([
 			"v2026.11.3-pins-66a50eb, commit 33a690c92568 on main of github.com/trymorse/morse-enclave, names these PCRs",
@@ -333,6 +345,7 @@ describe("forged documents of other images", () => {
 		const world = fake({
 			attestation: [reply([await instance(pinned.pcrs)])],
 			build: pinned.pcrs,
+			list: LIST_254,
 		});
 		const r = await verify({
 			...world.options,
@@ -361,16 +374,14 @@ describe("forged documents of other images", () => {
 		const r = await withDocs(
 			[LIVE, older.pcrs],
 			{},
-			{ release: "v2026.11.4-pins-23c1570" },
+			{ release: "v2026.11.15" },
 		);
 		expect(r.exitCode).toBe(1);
 		expect(last(r)?.label).toBe("Release");
 		expect(last(r)?.lines.slice(1, 3)).toEqual([
+			expect.stringMatching(/^key [0-9a-f]{16} runs v2026\.11\.15$/),
 			expect.stringMatching(
-				/^key [0-9a-f]{16} runs v2026\.11\.4-pins-23c1570$/,
-			),
-			expect.stringMatching(
-				/^key [0-9a-f]{16} runs v2026\.11\.4-pins-86774b6$/,
+				/^key [0-9a-f]{16} runs v2026\.11\.14-pins-a6556e9$/,
 			),
 		]);
 		expect(last(r)?.lines[3]).toBe(
@@ -412,17 +423,10 @@ describe("forged documents of other images", () => {
 				},
 				{ root: forge.root, ...o },
 			);
-		const releases = parseLog(LOG);
-		const unpublished = (
-			JSON.parse(STATEMENT.toString()) as {
-				images: (Pcrs & { revoked: boolean })[];
-			}
-		).images.find(
-			(i) => !i.revoked && !releases.some((r) => samePcrs(r.pcrs, i)),
-		) as Pcrs;
-
 		it("counts one enclave, and checks the source of the older document's image too", async () => {
-			const r = await sharing([LIVE, unpublished]);
+			const r = await sharing([LIVE, UNPUBLISHED], {
+				log: LOG_WITHOUT_UNPUBLISHED,
+			});
 			expect(r.exitCode).toBe(1);
 			expect(r.steps[0].lines.slice(0, 2)).toEqual([
 				expect.stringMatching(/^1 enclave, signed by AWS Nitro /),
@@ -449,14 +453,14 @@ describe("forged documents of other images", () => {
 				[LIVE, older.pcrs],
 				{},
 				{
-					release: "v2026.11.4-pins-23c1570",
+					release: "v2026.11.15",
 				},
 			);
 			expect(r.exitCode).toBe(1);
 			expect(last(r)?.label).toBe("Release");
 			expect(last(r)?.lines.slice(1, 3)).toEqual([
-				`key ${keyId} runs v2026.11.4-pins-23c1570`,
-				`key ${keyId} runs v2026.11.4-pins-86774b6`,
+				`key ${keyId} runs v2026.11.15`,
+				`key ${keyId} runs v2026.11.14-pins-a6556e9`,
 			]);
 		});
 
@@ -470,7 +474,7 @@ describe("forged documents of other images", () => {
 				["Rebuild", "failed"],
 			]);
 			expect(last(r)?.lines[0]).toBe(
-				"FAILED: commit 78f8ef8f9d0e rebuilds here to other PCRs than the enclaves attest:",
+				"FAILED: commit 2e667dcb138a rebuilds here to other PCRs than the enclaves attest:",
 			);
 		});
 
@@ -486,7 +490,7 @@ describe("forged documents of other images", () => {
 				/^this connection to api\.trymorse\.ai ended inside an attested enclave/,
 			);
 			expect(r.verdict[0]).toBe(
-				"Passed. The enclaves api.trymorse.ai lists run v2026.11.4-pins-23c1570 and v2026.11.4-pins-86774b6 of github.com/trymorse/morse-enclave, as published (not rebuilt here).",
+				"Passed. The enclaves api.trymorse.ai lists run v2026.11.15 and v2026.11.14-pins-a6556e9 of github.com/trymorse/morse-enclave, as published (not rebuilt here).",
 			);
 		});
 	});
@@ -516,7 +520,7 @@ describe("Source", () => {
 		const r = await check({ log });
 		expect(r.exitCode).toBe(1);
 		expect(last(r)?.lines).toEqual([
-			"FAILED: no commit on main of github.com/trymorse/morse-enclave names PCR0 4fccf46baafd…ef6e1606: its source isn't published. If Morse is mid-deploy it appears within minutes; run again. Until then, don't send it anything.",
+			"FAILED: no commit on main of github.com/trymorse/morse-enclave names PCR0 75b4ee3b4897…d0619cbf: its source isn't published. If Morse is mid-deploy it appears within minutes; run again. Until then, don't send it anything.",
 		]);
 	});
 
@@ -573,23 +577,23 @@ describe("Source", () => {
 
 describe("--release", () => {
 	it.each([
-		["its name", "v2026.11.4-pins-23c1570"],
+		["its name", "v2026.11.15"],
 		["its commit", LIVE_COMMIT],
 	])("passes when every enclave runs the release, named by %s", async (_, release) => {
 		const r = await check({}, { release });
 		expect(r.exitCode).toBe(0);
 		expect(r.steps.find((s) => s.label === "Release")?.lines).toEqual([
-			"every enclave runs v2026.11.4-pins-23c1570, commit 696ab5a852e0, as --release asks",
+			"every enclave runs v2026.11.15, commit e6cdc4229582, as --release asks",
 		]);
 	});
 
 	it("fails when the enclaves run another release", async () => {
-		const r = await check({}, { release: "v2026.11.4-pins-86774b6" });
+		const r = await check({}, { release: "v2026.11.14-pins-a6556e9" });
 		expect(r.exitCode).toBe(1);
 		expect(last(r)?.lines).toEqual([
-			"FAILED: --release names v2026.11.4-pins-86774b6, commit 78f8ef8f9d0e, but not every enclave runs it:",
-			"key 8f6198f0b59e34cf runs v2026.11.4-pins-23c1570",
-			"key 0032c6519a4b546d runs v2026.11.4-pins-23c1570",
+			"FAILED: --release names v2026.11.14-pins-a6556e9, commit 2e667dcb138a, but not every enclave runs it:",
+			"key b7b56034a2a03576 runs v2026.11.15",
+			"key f6bad5f9a3f183f6 runs v2026.11.15",
 			"They run another release. Read it, and pin its commit to accept it.",
 		]);
 	});
@@ -626,7 +630,7 @@ describe("--rebuild", () => {
 			"rebuilt here: PCR0, PCR1, and PCR2 match",
 		]);
 		expect(r.verdict[0]).toBe(
-			"Passed. The enclaves api.trymorse.ai lists run v2026.11.4-pins-23c1570 of github.com/trymorse/morse-enclave, which rebuilds here to the same PCRs.",
+			"Passed. The enclaves api.trymorse.ai lists run v2026.11.15 of github.com/trymorse/morse-enclave, which rebuilds here to the same PCRs.",
 		);
 		expect(world.ran.map((c) => c[0])).toEqual([
 			"git",
@@ -655,8 +659,8 @@ describe("--rebuild", () => {
 		);
 		expect(r.exitCode).toBe(1);
 		expect(last(r)?.lines).toEqual([
-			"FAILED: commit 696ab5a852e0 rebuilds here to other PCRs than the enclaves attest:",
-			"PCR0 4fccf46baafd…ef6e1606",
+			"FAILED: commit e6cdc4229582 rebuilds here to other PCRs than the enclaves attest:",
+			"PCR0 75b4ee3b4897…d0619cbf",
 			"PCR1 3b4a7e1b5f13…a0974d03",
 			"PCR2 000000000000…00000000",
 		]);
@@ -709,13 +713,13 @@ describe("TLS", () => {
 		const r = await check({
 			tls: {
 				spkiSha256:
-					"b0474adfce42421fb12c43ebee26901a97ebbf11f32d4a225ffa5767c534b679",
+					"9ca2e4167101e6282d70320e4e72981afbc950d98e15389faf2540e77dca4ea1",
 				issuer: "i-0d45a659f78879f74",
 			},
 		});
 		expect(r.exitCode).toBe(0);
 		expect(last(r)?.lines).toEqual([
-			"this connection to api.trymorse.ai ended inside an attested enclave (key b0474adfce42421f)",
+			"this connection to api.trymorse.ai ended inside an attested enclave (key 9ca2e4167101e628)",
 		]);
 	});
 

@@ -21,8 +21,8 @@ export const REPO = "github.com/trymorse/morse-enclave";
  * is stuck, and would hold every check waiting on it. */
 const GIT_TIMEOUT_MS = 60_000;
 
-/** The message Morse's CI writes on each release commit, which morse-seal (not published yet)
- * reads too. */
+/** The message Morse's CI writes on each release commit, which Morse's sealing sidecar reads
+ * too. */
 const MESSAGE =
 	/^(\S+)\n\nPCR0 ([0-9a-f]{96})\nPCR1 ([0-9a-f]{96})\nPCR2 ([0-9a-f]{96})\n(?:rootfs sha256 ([0-9a-f]{64})\n)?$/;
 

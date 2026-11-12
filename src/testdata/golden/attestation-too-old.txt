@@ -1,7 +1,7 @@
 @askmorse/verify 0.0.0
 Checking the enclaves api.trymorse.ai lists
 
-Attestation  FAILED: enclave i-015c22f85232d8af3-enc01a1aff39c639a81: the
-             document is 31 minutes old
+Attestation  FAILED: enclave i-0d45a659f78879f74-enc01a1ca0eee2be5d3: the
+             document is 32 minutes old
 
 Failed at Attestation. Don't send anything to these enclaves.
