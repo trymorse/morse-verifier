@@ -312,6 +312,12 @@ export class SealedReplyError extends Error {
 	override name = "SealedReplyError";
 }
 
+/** A sealed reply whose bytes stop before its final frame: cut on its way, with every frame that
+ * came opening. Any other `SealedReplyError` is a frame that doesn't open as sealed. */
+export class SealedReplyCut extends SealedReplyError {
+	override name = "SealedReplyCut";
+}
+
 function byteReader(stream: ReadableStream<Uint8Array>) {
 	const reader = stream.getReader();
 	let buffered = new Uint8Array(0) as Bytes;
@@ -347,7 +353,7 @@ export async function openReply(
 ): Promise<OpenedReply> {
 	const reader = byteReader(body);
 	const salt = await reader.read(SALT);
-	if (!salt) throw new SealedReplyError("the reply ends before its salt");
+	if (!salt) throw new SealedReplyCut("the reply ends before its salt");
 	const keys = await frameKeys(cek, salt);
 	let index = 0;
 	const next = async () => {
@@ -355,7 +361,7 @@ export async function openReply(
 		const ciphertext =
 			size && (await reader.read(new DataView(size.buffer).getUint32(0)));
 		if (!ciphertext)
-			throw new SealedReplyError("the reply ends before its final frame");
+			throw new SealedReplyCut("the reply ends before its final frame");
 		return openFrame(keys, index++, ciphertext);
 	};
 	const first = await next();

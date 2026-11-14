@@ -1,8 +1,7 @@
 // attested(): a fetch for the OpenAI SDK that seals each request carrying content to the keys of
 // enclaves that passed the checks `npx @askmorse/verify` prints as Attestation, Allowed, and Source,
 // and throws rather than send anything the relay could read:
-//   const origin = "https://inference.trymorse.ai";
-//   new OpenAI({ baseURL: `${origin}/v1`, apiKey, fetch: attested({ origin }) })
+//   new OpenAI({ baseURL: "https://inference.trymorse.ai/v1", apiKey, fetch: attested() })
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { type Bytes, hex } from "../bytes.ts";
@@ -44,7 +43,7 @@ type Fetch = (
 ) => Promise<Response>;
 
 export interface AttestedOptions {
-	/** Where Morse's API is, over HTTPS. Default https://api.trymorse.ai. A request to any other
+	/** Where Morse's API is, over HTTPS. Default https://inference.trymorse.ai. A request to any other
 	 * origin throws, so your API key goes nowhere else. */
 	readonly origin?: string;
 }
@@ -457,7 +456,7 @@ async function opened(
 	);
 }
 
-const ORIGIN = "https://api.trymorse.ai";
+const ORIGIN = "https://inference.trymorse.ai";
 const perProcess = new Map<string, Fetch>();
 
 /** A fetch that seals every request carrying content to Morse's verified enclave keys, passes the

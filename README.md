@@ -7,8 +7,8 @@
 This command checks that the enclaves serving Morse's API run code you can read. It needs no account, only Node 24 or later and `git`.
 
 ```sh
-npx @askmorse/verify                        # api.trymorse.ai, the web app's host
-npx @askmorse/verify inference.trymorse.ai  # the API key door
+npx @askmorse/verify                  # inference.trymorse.ai, the API key door
+npx @askmorse/verify api.trymorse.ai  # the web app's host
 npx @askmorse/verify [host] [--release <name|commit>] [--rebuild] [--help] [--version]
 ```
 
@@ -27,7 +27,7 @@ It checks prod only, judges times by your clock, and ignores the unsigned `envir
 **Attestation.** Each document from `GET https://<host>/v1/attestation` must chain to the AWS Nitro root (SHA-256 `641a0321a3e244efe456463195d606317ed7cdcc3c1756e09893f3c68f79bb5b`, [published by AWS](https://docs.aws.amazon.com/enclaves/latest/user/verify-root.html)), be at most 30 minutes old and 5 minutes ahead, have PCRs that aren't all zero, which would mean debug mode, and carry `user_data` of `morse-proxy-hpke-v1|prod|` plus the 32-byte X25519 key that requests are sealed to. The verifier checks every document at its own PCRs. A host that lists no enclave fails.
 
 ```sh
-curl -s https://api.trymorse.ai/v1/attestation | jq -r '.instances[0]' | base64 -d > doc.cbor
+curl -s https://inference.trymorse.ai/v1/attestation | jq -r '.instances[0]' | base64 -d > doc.cbor
 ```
 
 Check `doc.cbor` with any COSE and X.509 library, or with [`check-enclave.py`](https://github.com/trymorse/morse-enclave/blob/main/check-enclave.py), a separate Python check that reads the unsigned `enclave_pins.json`.
@@ -108,7 +108,7 @@ openssl s_client -connect api.trymorse.ai:443 -servername api.trymorse.ai </dev/
 ```ts
 import { verify } from "@askmorse/verify";
 
-const report = await verify({ host: "api.trymorse.ai", release: undefined, rebuild: false, onStep: (step) => console.log(step) });
+const report = await verify({ host: "inference.trymorse.ai", release: undefined, rebuild: false, onStep: (step) => console.log(step) });
 report.exitCode; // 0, 1, or 2, as the command exits
 report.steps; // [{ label: "Attestation", status: "passed", lines: [...] }, ...]
 report.images; // each image's PCRs, its enclaves' keys, and its release on main
@@ -124,11 +124,10 @@ report.images; // each image's PCRs, its enclaves' keys, and its release on main
 import OpenAI from "openai";
 import { attested } from "@askmorse/verify";
 
-const origin = "https://inference.trymorse.ai";
-const client = new OpenAI({ baseURL: `${origin}/v1`, apiKey: process.env.MORSE_API_KEY, fetch: attested({ origin }) });
+const client = new OpenAI({ baseURL: "https://inference.trymorse.ai/v1", apiKey: process.env.MORSE_API_KEY, fetch: attested() });
 ```
 
-Without `origin` it uses `https://api.trymorse.ai`, which can refuse API keys with 403 `use_inference_door`.
+Without `origin` it uses `https://inference.trymorse.ai`. Pass `origin` to reach another host.
 
 - It runs on Node 24 or later with `git`, so not in browsers, edge runtimes, or `node:24-slim`.
 - It works with openai 4 to 7. On openai 4, write `fetch: attested() as never`.
@@ -170,7 +169,7 @@ This repository doesn't take pull requests. Open an issue for a bug, and follow 
 ```sh
 npm ci
 npm test
-VERIFY_LIVE=1 npm test   # also runs verify() against api.trymorse.ai
+VERIFY_LIVE=1 npm test   # also runs verify() against inference.trymorse.ai
 npm run build            # dist/, which npm publishes
 ```
 

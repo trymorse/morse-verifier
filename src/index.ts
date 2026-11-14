@@ -31,6 +31,7 @@ export {
 	MAX_KEYS,
 	openReply,
 	SEALED_CONTENT_TYPE,
+	SealedReplyCut,
 	SealedReplyError,
 	sealRequest,
 } from "./seal.ts";

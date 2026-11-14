@@ -39,8 +39,11 @@ import {
 } from "./source.ts";
 import { type ServedKey, servedKey } from "./tls.ts";
 
+/** The host a check names by default: the API key door, where TLS ends inside the enclave. */
+export const DEFAULT_HOST = "inference.trymorse.ai";
+
 export interface VerifyOptions {
-	/** The host whose /v1/attestation lists the enclaves. Default api.trymorse.ai. */
+	/** The host whose /v1/attestation lists the enclaves. Default DEFAULT_HOST. */
 	readonly host?: string;
 	/** A release name (its commit's subject) or 40-hex commit on main that every enclave must run. */
 	readonly release?: string;
@@ -258,7 +261,7 @@ export async function checkDocument(
 }
 
 export async function verify(options: VerifyOptions = {}): Promise<Report> {
-	const host = options.host ?? "api.trymorse.ai";
+	const host = options.host ?? DEFAULT_HOST;
 	const now = options.now ?? Date.now;
 	const fetchFn = options.fetch ?? fetch;
 	const run = options.exec ?? exec;

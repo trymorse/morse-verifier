@@ -2,7 +2,12 @@
 // plain text, and returns the exit code.
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { type Step, type VerifyOptions, verify } from "./verify.ts";
+import {
+	DEFAULT_HOST,
+	type Step,
+	type VerifyOptions,
+	verify,
+} from "./verify.ts";
 
 const LABEL = 13;
 const WIDTH = 80;
@@ -10,9 +15,9 @@ const HOST = /^[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?$/;
 
 export const USAGE = `Usage: npx @askmorse/verify [host] [--release <name|commit>] [--rebuild]
 
-Checks that the enclaves <host> lists (default api.trymorse.ai) run an image
-AWS Nitro signed for, that Morse's signed list allows, and whose source is a
-commit on main of github.com/trymorse/morse-enclave.
+Checks that the enclaves <host> lists (default ${DEFAULT_HOST}) run an
+image AWS Nitro signed for, that Morse's signed list allows, and whose source
+is a commit on main of github.com/trymorse/morse-enclave.
 
   --release <x>  every enclave must run this release: a commit's subject, such
                  as v2026.11.4-pins-23c1570, or its 40-hex commit
@@ -76,8 +81,7 @@ export interface Io {
 
 export async function main(
 	argv: readonly string[],
-	options: Omit<VerifyOptions, "host" | "release" | "rebuild" | "onStep"> &
-		Io = {},
+	options: Omit<VerifyOptions, "release" | "rebuild" | "onStep"> & Io = {},
 ): Promise<number> {
 	const out = options.out ?? ((t: string) => process.stdout.write(t));
 	const err = options.err ?? ((t: string) => process.stderr.write(t));
@@ -96,9 +100,9 @@ export async function main(
 		out(`${version()}\n`);
 		return 0;
 	}
-	const [host = "api.trymorse.ai", ...extra] = args.positionals;
+	const [host = options.host ?? DEFAULT_HOST, ...extra] = args.positionals;
 	if (extra.length > 0 || !HOST.test(host)) {
-		err(`Name one host, such as api.trymorse.ai.\n\n${USAGE}\n`);
+		err(`Name one host, such as ${DEFAULT_HOST}.\n\n${USAGE}\n`);
 		return 2;
 	}
 

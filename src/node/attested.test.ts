@@ -420,9 +420,11 @@ describe("what attested() won't send", () => {
 		expect(() => attested({ origin: "http://api.trymorse.ai" })).toThrow(
 			/^attested\(\) sends only over HTTPS/,
 		);
-		expect(attested()).toBe(attested({ origin: "https://api.trymorse.ai/" }));
+		expect(attested()).toBe(
+			attested({ origin: "https://inference.trymorse.ai/" }),
+		);
 		expect(attested()).not.toBe(
-			attested({ origin: "https://inference.trymorse.ai" }),
+			attested({ origin: "https://api.trymorse.ai" }),
 		);
 	});
 

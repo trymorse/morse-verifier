@@ -188,6 +188,8 @@ export function fake(world: World = {}) {
 	};
 
 	const options = {
+		// The captures are api.trymorse.ai's, so the world is that host's, not the default one.
+		host: "api.trymorse.ai",
 		fetch: fetchFn,
 		exec,
 		now: () => NOW,

@@ -94,6 +94,14 @@ describe("verify(), on the captures from 2026-11-11", () => {
 			["git", "-C", expect.stringMatching(/enclave\.git$/)],
 		]);
 	});
+
+	it("checks the API key door unless it's named another host", async () => {
+		const world = fake();
+		await verify({ ...world.options, host: undefined });
+		expect(world.fetched[0]).toBe(
+			"https://inference.trymorse.ai/v1/attestation",
+		);
+	});
 });
 
 describe("Attestation", () => {
