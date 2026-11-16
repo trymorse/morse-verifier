@@ -469,7 +469,7 @@ export function verifySignedList(
 		critical = parseCert(new Uint8Array(certificate)).unhandledCritical;
 	} catch (e) {
 		throw new Error(
-			`is signed with a certificate that ${(e as Error).message.replace(/^the certificate /, "")}`,
+			`is signed with a certificate ${(e as Error).message.replace(/^the certificate's /, "whose ").replace(/^the certificate /, "that ")}`,
 		);
 	}
 	const unread = critical.filter((id) => id !== SUBJECT_ALT_NAME);

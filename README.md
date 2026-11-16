@@ -173,7 +173,7 @@ VERIFY_LIVE=1 npm test   # also runs verify() against inference.trymorse.ai
 npm run build            # dist/, which npm publishes
 ```
 
-Tests use prod captures from 2026-11-11 in [src/testdata](src/testdata).
+Tests use prod captures from 2026-11-11 in [src/testdata](src/testdata). The tests of each certificate rule the Allowed check enforces use forged Rekor v2 bundles that [src/testing/rekor_v2.ts](src/testing/rekor_v2.ts) builds under a test log, test witnesses, and a test root, none of which ships in `dist/`.
 
 ## License
 
