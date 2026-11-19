@@ -10,7 +10,7 @@ import {
 	verifyNitroDocument,
 } from "./nitro.ts";
 import { UnpinnedError } from "./pins.ts";
-import { keyIdOf, MAX_KEYS } from "./seal.ts";
+import { keyIdOf, newestKeys } from "./seal.ts";
 
 export interface ProxyTrustAnchors extends Omit<Expectation, "now"> {
 	readonly standIns: boolean;
@@ -101,7 +101,7 @@ export async function verifyInstances(
 		instances.map(async (i) => (await proveInstance(i, trust, now)).key),
 	);
 	const refusals: Error[] = [];
-	const byId = new Map<string, AttestedKey>();
+	const proven: AttestedKey[] = [];
 	for (const r of results) {
 		if (r.status === "rejected") {
 			refusals.push(
@@ -109,13 +109,9 @@ export async function verifyInstances(
 			);
 			continue;
 		}
-		const id = r.value.keyId.join(",");
-		const known = byId.get(id);
-		if (!known || known.issuedAt < r.value.issuedAt) byId.set(id, r.value);
+		proven.push(r.value);
 	}
-	const keys = [...byId.values()]
-		.sort((a, b) => b.issuedAt - a.issuedAt)
-		.slice(0, MAX_KEYS);
+	const keys = newestKeys(proven);
 	if (keys.length === 0) throw new UnattestedError(refusals);
 	return {
 		keys,

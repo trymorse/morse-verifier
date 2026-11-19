@@ -10,6 +10,7 @@ import {
 	hkdfBytes,
 	hkdfInput,
 } from "./bytes.ts";
+import type { AttestedKey } from "./nitro.ts";
 
 export const SEALED_CONTENT_TYPE = "application/morse-sealed";
 export const MAX_KEYS = 4;
@@ -28,6 +29,18 @@ export async function keyIdOf(publicKey: Bytes): Promise<Bytes> {
 		await crypto.subtle.digest("SHA-256", publicKey),
 	);
 	return digest.slice(0, 8);
+}
+
+export function newestKeys(keys: readonly AttestedKey[]): AttestedKey[] {
+	const byId = new Map<string, AttestedKey>();
+	for (const k of keys) {
+		const id = k.keyId.join(",");
+		const known = byId.get(id);
+		if (!known || known.issuedAt < k.issuedAt) byId.set(id, k);
+	}
+	return [...byId.values()]
+		.sort((a, b) => b.issuedAt - a.issuedAt)
+		.slice(0, MAX_KEYS);
 }
 
 export interface SealKey {
