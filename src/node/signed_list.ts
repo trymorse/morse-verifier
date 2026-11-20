@@ -24,6 +24,7 @@ import { bundleFromJSON, ValidationError } from "@sigstore/bundle";
 import { HashAlgorithm, TrustedRoot } from "@sigstore/protobuf-specs";
 import { toSignedEntity, toTrustMaterial, Verifier } from "@sigstore/verify";
 import { z } from "zod";
+import { type Checkpoint, readCheckpoint } from "../note.ts";
 import { parseCert } from "../x509.ts";
 import { get, json, Unfinished } from "./io.ts";
 import { SIGSTORE_TRUSTED_ROOT } from "./sigstore_root.ts";
@@ -313,45 +314,25 @@ function loggedCertificate(body: Buffer): Buffer {
 	}
 }
 
-const SIGNATURE_LINE =
-	/^— (\S+) ((?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?)$/;
-
-// A checkpoint as a C2SP signed note: its text, one blank line, then only signature lines, so that
-// @sigstore/verify, which checks the log's line, and the count below read the same text.
-function readNote(envelope: string) {
-	const blank = envelope.indexOf("\n\n");
-	if (blank < 0 || !envelope.endsWith("\n") || /[\r\0]/.test(envelope))
-		return undefined;
-	const lines = envelope.slice(blank + 2, -1).split("\n");
-	const signatures = lines.map((line) => SIGNATURE_LINE.exec(line));
-	if (lines.length > 100 || signatures.some((m) => !m)) return undefined;
-	return {
-		text: Buffer.from(envelope.slice(0, blank + 1), "utf8"),
-		signatures: signatures.map((m) => ({
-			name: m?.[1] ?? "",
-			raw: Buffer.from(m?.[2] ?? "", "base64"),
-		})),
-	};
-}
-
 // The time in ms of each counted cosignature, earliest first: a cosignature/v1 signature, by a
 // witness of the trust, over the checkpoint's text. Each operator counts once, at its earliest.
 function cosignatures(
-	note: NonNullable<ReturnType<typeof readNote>>,
+	checkpoint: Checkpoint,
 	witnesses: readonly Witness[],
 ): number[] {
 	const earliest = new Map<string, number>();
-	for (const { name, raw } of note.signatures) {
-		if (raw.length !== 4 + 8 + 64) continue;
-		const seconds = raw.readBigUInt64BE(4);
+	for (const { name, hash, sig } of checkpoint.signatures) {
+		if (sig.length !== 8 + 64) continue;
+		const raw = Buffer.from(sig);
+		const seconds = raw.readBigUInt64BE(0);
 		if (seconds > 1n << 62n) continue;
-		const signed = Buffer.concat([
-			Buffer.from(`cosignature/v1\ntime ${seconds}\n`),
-			note.text,
-		]);
+		const signed = Buffer.from(
+			`cosignature/v1\ntime ${seconds}\n${checkpoint.text}`,
+			"utf8",
+		);
 		for (const w of witnesses) {
-			if (w.name !== name || !w.hash.equals(raw.subarray(0, 4))) continue;
-			if (!cryptoVerify(null, signed, w.key, raw.subarray(12))) continue;
+			if (w.name !== name || !w.hash.equals(hash)) continue;
+			if (!cryptoVerify(null, signed, w.key, raw.subarray(8))) continue;
 			const at = Number(seconds) * 1000;
 			if (at < (earliest.get(w.operator) ?? Number.POSITIVE_INFINITY))
 				earliest.set(w.operator, at);
@@ -436,8 +417,8 @@ export function verifySignedList(
 	const kind = `${entry.kindVersion?.kind} ${entry.kindVersion?.version}`;
 	if (kind !== "hashedrekord 0.0.2")
 		throw new Error(`is logged as ${kind}, not hashedrekord 0.0.2 (Rekor v2)`);
-	const note = readNote(entry.inclusionProof?.checkpoint?.envelope ?? "");
-	if (!note)
+	const note = readCheckpoint(entry.inclusionProof?.checkpoint?.envelope ?? "");
+	if ("malformed" in note)
 		throw new Error(
 			"carries a checkpoint that isn't one signed note of text and signature lines",
 		);
